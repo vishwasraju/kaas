@@ -1,0 +1,281 @@
+"""
+Writes the OKF bundle files and packages them into output.zip.
+Produces spec-conformant output per OKF v0.1.
+"""
+
+import os
+import shutil
+import tempfile
+import zipfile
+from datetime import date
+
+import yaml
+
+from models.repository import Repository
+from models.okf_file import OKFFile
+from writer.graph_builder import build_graph_html
+
+
+def build_index_file(repository: Repository) -> str:
+    """
+    Build the root index.md content.
+    Per OKF spec §6, index files contain NO frontmatter.
+    Uses standard markdown links (not wiki-links).
+    """
+
+    lines = [f"# {repository.title}", ""]
+
+    # Group files by directory
+    groups = {}
+    for f in repository.files:
+        parts = f.path.split("/")
+        if len(parts) > 1:
+            group_dir = parts[0]
+            group_name = group_dir.replace("-", " ").title()
+        else:
+            group_dir = ""
+            group_name = "General"
+        groups.setdefault((group_dir, group_name), []).append(f)
+
+    for (group_dir, group_name), files in groups.items():
+        lines.append(f"## {group_name}")
+        lines.append("")
+        for f in files:
+            desc = f" - {f.description}" if f.description else ""
+            lines.append(f"* [{f.title}]({f.path}){desc}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def build_subdir_index(group_name: str, files: list) -> str:
+    """
+    Build an index.md for a subdirectory.
+    Per OKF spec §6, index files contain NO frontmatter.
+    """
+
+    lines = [f"# {group_name}", ""]
+
+    for f in files:
+        basename = f.path.split("/")[-1]
+        desc = f" - {f.description}" if f.description else ""
+        lines.append(f"* [{f.title}]({basename}){desc}")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def build_concept_file(okf: OKFFile) -> str:
+    """
+    Build the content for a single concept .md file.
+    Frontmatter follows OKF spec §4.1.
+    Body follows OKF spec §4.2 with cross-links per §5.
+    """
+
+    # Build frontmatter: required + recommended fields first
+    frontmatter = {"type": okf.type}
+
+    if okf.title:
+        frontmatter["title"] = okf.title
+
+    if okf.description:
+        frontmatter["description"] = okf.description
+
+    if okf.tags:
+        frontmatter["tags"] = okf.tags
+
+    if okf.timestamp:
+        frontmatter["timestamp"] = okf.timestamp
+
+    # Extension fields from metadata (§4.1: producers MAY include any keys)
+    for key, value in okf.metadata.items():
+        frontmatter[key] = value
+
+    yaml_text = yaml.safe_dump(
+        frontmatter,
+        allow_unicode=True,
+        sort_keys=False,
+    )
+
+    md = (
+        "---\n"
+        + yaml_text
+        + "---\n\n"
+        + "# "
+        + okf.title
+        + "\n\n"
+        + okf.content
+    )
+
+    # Add cross-links section using standard markdown links (§5)
+    if okf.relationships:
+        md += "\n\n## Related Concepts\n\n"
+        for rel in okf.relationships:
+            rel_type = rel.get("type", "related")
+            target = rel.get("target", "")
+            target_path = rel.get("target_path")
+            if target_path:
+                # Bundle-relative absolute link (§5.1)
+                md += f"- {rel_type}: [{target}](/{target_path})\n"
+            else:
+                md += f"- {rel_type}: {target}\n"
+
+    # Add citations section for external sources (§8)
+    if okf.citations:
+        md += "\n# Citations\n\n"
+        for i, cite in enumerate(okf.citations, 1):
+            md += f"[{i}] [{cite['text']}]({cite['url']})\n"
+
+    md += "\n"
+    return md
+
+
+def build_log_file(repository: Repository) -> str:
+    """
+    Build a log.md recording the conversion event.
+    Per OKF spec §7, uses ISO 8601 date headings, newest first.
+    """
+
+    today = date.today().isoformat()
+
+    lines = ["# Directory Update Log", ""]
+    lines.append(f"## {today}")
+    for f in repository.files:
+        lines.append(f"* **Creation**: Created [{f.title}](/{f.path}).")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def write_repository(repository: Repository, output_dir: str = "output"):
+    """
+    Write the entire OKF bundle to disk as a directory tree.
+    """
+
+    from pathlib import Path
+
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+
+    # Write root index.md (§6)
+    with open(
+        output / "index.md",
+        "w",
+        encoding="utf-8",
+    ) as f:
+        f.write(build_index_file(repository))
+
+    # Write root log.md (§7)
+    with open(
+        output / "log.md",
+        "w",
+        encoding="utf-8",
+    ) as f:
+        f.write(build_log_file(repository))
+
+    # Write root interactive graph visualizer
+    with open(
+        output / "visualize_graph.html",
+        "w",
+        encoding="utf-8",
+    ) as f:
+        f.write(build_graph_html(repository))
+
+    # Group files by directory for subdirectory indexes
+    groups = {}
+    for okf in repository.files:
+        parts = okf.path.split("/")
+        if len(parts) > 1:
+            group_dir = parts[0]
+            group_name = group_dir.replace("-", " ").title()
+            groups.setdefault((group_dir, group_name), []).append(okf)
+
+    # Write subdirectory indexes (§6)
+    for (group_dir, group_name), files in groups.items():
+        subdir = output / group_dir
+        subdir.mkdir(parents=True, exist_ok=True)
+        with open(
+            subdir / "index.md",
+            "w",
+            encoding="utf-8",
+        ) as f:
+            f.write(build_subdir_index(group_name, files))
+
+    # Write every concept document (§4)
+    for okf in repository.files:
+        filepath = output / okf.path
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(
+            filepath,
+            "w",
+            encoding="utf-8",
+        ) as f:
+            f.write(build_concept_file(okf))
+
+
+def write_zip(repository: Repository, output_dir: str = None) -> str:
+    """
+    Write the OKF bundle into a ZIP archive.
+
+    Args:
+        repository: The OKF Repository object.
+        output_dir: Directory to write output.zip to.
+                    Defaults to a temporary directory.
+
+    Returns:
+        Absolute path to the generated output.zip.
+    """
+
+    if output_dir is None:
+        output_dir = tempfile.mkdtemp(prefix="pdf_to_okf_")
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    zip_path = os.path.join(output_dir, "output.zip")
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+
+        # Write root index.md (§6)
+        zf.writestr("index.md", build_index_file(repository))
+
+        # Write root log.md (§7)
+        zf.writestr("log.md", build_log_file(repository))
+
+        # Write root interactive graph visualizer
+        zf.writestr("visualize_graph.html", build_graph_html(repository))
+
+        # Group files by directory for subdirectory indexes
+        groups = {}
+        for f in repository.files:
+            parts = f.path.split("/")
+            if len(parts) > 1:
+                group_dir = parts[0]
+                group_name = group_dir.replace("-", " ").title()
+                groups.setdefault((group_dir, group_name), []).append(f)
+
+        # Write subdirectory index.md files (§6)
+        for (group_dir, group_name), files in groups.items():
+            zf.writestr(
+                f"{group_dir}/index.md",
+                build_subdir_index(group_name, files),
+            )
+
+        # Write each concept file (§4)
+        for okf in repository.files:
+            zf.writestr(
+                okf.path,
+                build_concept_file(okf),
+            )
+
+    return zip_path
+
+
+def cleanup_temp_dir(zip_path: str) -> None:
+    """
+    Remove the temporary directory containing the ZIP file.
+    Should be called after the ZIP has been sent to the client.
+    """
+
+    temp_dir = os.path.dirname(zip_path)
+    if temp_dir and os.path.basename(temp_dir).startswith("pdf_to_okf_"):
+        shutil.rmtree(temp_dir, ignore_errors=True)

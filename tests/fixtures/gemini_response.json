@@ -1,0 +1,37 @@
+{
+    "repository_title": "Test Knowledge Base",
+    "document_type": "textbook",
+    "language": "en",
+    "knowledge_units": [
+        {
+            "title": "Introduction to Testing",
+            "type": "Chapter",
+            "description": "An introduction to software testing concepts.",
+            "tags": ["testing", "introduction"],
+            "category": "chapters",
+            "start_page": 1,
+            "end_page": 1,
+            "segments": [
+                {"page": 1, "start_paragraph": 0, "end_paragraph": 1}
+            ],
+            "relationships": [
+                {"type": "related", "target": "Unit Testing Basics"}
+            ]
+        },
+        {
+            "title": "Unit Testing Basics",
+            "type": "Chapter",
+            "description": "Fundamentals of unit testing methodology.",
+            "tags": ["testing", "unit-testing"],
+            "category": "chapters",
+            "start_page": 1,
+            "end_page": 1,
+            "segments": [
+                {"page": 1, "start_paragraph": 2, "end_paragraph": 3}
+            ],
+            "relationships": [
+                {"type": "prerequisite", "target": "Introduction to Testing"}
+            ]
+        }
+    ]
+}

@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Convert PDF documents into Open Knowledge Format (OKF) with lossless extraction. Preserves 100% of original content.">
+    <title>PDF to OKF — Lossless Extraction</title>
+    <link rel="stylesheet" href="/static/style.css">
+
+    <style>
+        /* ---- Success Card Layout ---- */
+        #workspace-container {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            align-items: center;
+            justify-content: center;
+            background: #0f0f13;
+        }
+
+        .success-card {
+            width: 100%;
+            max-width: 480px;
+            padding: 3rem 2.5rem;
+            background: #1a1a24;
+            border: 1px solid #2a2a3a;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            animation: card-appear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes card-appear {
+            from {
+                opacity: 0;
+                transform: scale(0.96) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .success-icon-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(52, 211, 153, 0.1);
+            border: 2px solid rgba(52, 211, 153, 0.2);
+            color: var(--success);
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0 20px rgba(52, 211, 153, 0.15);
+            animation: pulse-success 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-success {
+            0%, 100% { box-shadow: 0 0 20px rgba(52, 211, 153, 0.15); }
+            50% { box-shadow: 0 0 35px rgba(52, 211, 153, 0.3); }
+        }
+
+        .success-icon {
+            width: 40px;
+            height: 40px;
+        }
+
+        .success-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.01em;
+        }
+
+        .success-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .success-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .btn-success {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.85rem;
+            border-radius: var(--radius);
+            font-family: var(--font);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-success-primary {
+            background: var(--accent);
+            border: none;
+            color: #fff;
+        }
+
+        .btn-success-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .btn-success-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-success-secondary {
+            background: #1f2937;
+            border: 1px solid #374151;
+            color: #d1d5db;
+        }
+
+        .btn-success-secondary:hover {
+            background: #374151;
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .btn-success-secondary:active {
+            transform: translateY(0);
+        }
+
+        .btn-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* ---- Service Type Selector ---- */
+        .service-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .service-card {
+            background: #1a1a24;
+            border: 1px solid #2a2a3a;
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .service-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 16px var(--accent-glow);
+            background: rgba(108, 99, 255, 0.05);
+        }
+
+        .service-card:hover:not(.disabled) {
+            border-color: var(--accent-hover);
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .service-card.disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .service-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .service-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .service-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+        }
+
+        .service-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .service-badge.active {
+            background: rgba(52, 211, 153, 0.12);
+            color: var(--success);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        .service-badge.soon {
+            background: rgba(156, 163, 175, 0.08);
+            color: #9ca3af;
+            border: 1px solid rgba(156, 163, 175, 0.15);
+        }
+
+        .upload-view {
+            display: flex;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Upload Interface -->
+    <div class="upload-view" id="upload-view">
+        <div class="container">
+            <h1>Knowledge as a Service</h1>
+            <p class="subtitle">Convert documents into premium, structured knowledge representations.</p>
+
+            <form id="upload-form">
+                <!-- Service Selection -->
+                <div class="service-selector">
+                    <div class="service-card selected" id="service-okf" data-service="okf">
+                        <div class="service-info">
+                            <div class="service-title">OKF (Open Knowledge Format)</div>
+                            <div class="service-desc">Generates concept markdown modules and cross-references.</div>
+                        </div>
+                        <span class="service-badge active">Active</span>
+                    </div>
+                    <div class="service-card disabled" id="service-rag" data-service="rag">
+                        <div class="service-info">
+                            <div class="service-title">RAG (Retrieval-Augmented Gen)</div>
+                            <div class="service-desc">Vector-optimized text chunks with semantic separation.</div>
+                        </div>
+                        <span class="service-badge soon">Soon</span>
+                    </div>
+                    <div class="service-card disabled" id="service-rag-okf" data-service="rag-okf">
+                        <div class="service-info">
+                            <div class="service-title">RAG + OKF Hybrid</div>
+                            <div class="service-desc">Combines concept mapping with vector database chunks.</div>
+                        </div>
+                        <span class="service-badge soon">Soon</span>
+                    </div>
+                </div>
+
+                <div class="drop-zone" id="drop-zone">
+                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <p class="drop-text">Drop your PDF here or <label for="pdf-input" class="browse-link">browse</label></p>
+                    <input type="file" name="pdf" id="pdf-input" accept=".pdf" required>
+                    <p class="file-name" id="file-name"></p>
+                </div>
+
+                <button type="submit" id="submit-btn" disabled>
+                    <span class="btn-text">Extract to OKF</span>
+                    <span class="btn-loading" style="display:none;">
+                        <span class="spinner"></span>
+                        Processing...
+                    </span>
+                </button>
+            </form>
+
+            <!-- Toast -->
+            <div class="toast" id="toast">
+                <span class="toast-icon" id="toast-icon">⚠️</span>
+                <span class="toast-message" id="toast-message"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Success View -->
+    <div id="workspace-container">
+        <div class="success-card">
+            <div class="success-icon-container">
+                <svg class="success-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            
+            <h2 class="success-title">Extraction Complete</h2>
+            <p class="success-subtitle" id="workspace-repo-title">Your OKF repository has been successfully generated.</p>
+
+            <div class="success-actions">
+                <button class="btn-success btn-success-primary" id="btn-download">
+                    <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download ZIP
+                </button>
+                <button class="btn-success btn-success-secondary" id="btn-back">
+                    <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H5"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    New Upload
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('pdf-input');
+        const fileName = document.getElementById('file-name');
+        const submitBtn = document.getElementById('submit-btn');
+        const form = document.getElementById('upload-form');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+        const toastIcon = document.getElementById('toast-icon');
+
+        // Service selection logic
+        const serviceCards = document.querySelectorAll('.service-card');
+        let selectedService = 'okf';
+
+        serviceCards.forEach(card => {
+            card.addEventListener('click', () => {
+                if (card.classList.contains('disabled')) {
+                    const title = card.querySelector('.service-title').textContent.split(' (')[0];
+                    showToast(`${title} conversion is coming soon!`, true);
+                    return;
+                }
+                
+                serviceCards.forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedService = card.dataset.service;
+                
+                // Update submit button text if needed
+                const btnText = submitBtn.querySelector('.btn-text');
+                if (selectedService === 'okf') {
+                    btnText.textContent = 'Extract to OKF';
+                }
+            });
+        });
+
+        // Workspace elements
+        const uploadView = document.getElementById('upload-view');
+        const workspaceContainer = document.getElementById('workspace-container');
+        const workspaceRepoTitle = document.getElementById('workspace-repo-title');
+        const btnBack = document.getElementById('btn-back');
+        const btnDownload = document.getElementById('btn-download');
+        
+        let activeWorkspaceData = null; // Holds the parsed JSON response
+
+        // File selection
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileName.textContent = fileInput.files[0].name;
+                submitBtn.disabled = false;
+                dropZone.classList.add('has-file');
+                hideToast();
+            }
+        });
+
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                fileName.textContent = e.dataTransfer.files[0].name;
+                submitBtn.disabled = false;
+                dropZone.classList.add('has-file');
+                hideToast();
+            }
+        });
+
+
+
+        // Toast notifications
+        function showToast(message, isError = true) {
+            toastMessage.textContent = message;
+            toastIcon.textContent = isError ? '⚠️' : '✅';
+            toast.className = 'toast ' + (isError ? 'toast-error' : 'toast-success') + ' toast-visible';
+
+            if (!isError) {
+                setTimeout(hideToast, 5000);
+            }
+        }
+
+        function hideToast() {
+            toast.classList.remove('toast-visible');
+        }
+
+        // Download ZIP
+        btnDownload.addEventListener('click', () => {
+            if (!activeWorkspaceData || !activeWorkspaceData.zip_base64) return;
+            
+            const zipBytes = atob(activeWorkspaceData.zip_base64);
+            const array = new Uint8Array(zipBytes.length);
+            for (let i = 0; i < zipBytes.length; i++) {
+                array[i] = zipBytes.charCodeAt(i);
+            }
+            
+            const blob = new Blob([array], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'output.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Download started successfully!', false);
+        });
+
+        // New Upload View Transition
+        btnBack.addEventListener('click', () => {
+            workspaceContainer.style.display = 'none';
+            uploadView.style.display = 'flex';
+            
+            // Clean up state
+            fileName.textContent = '';
+            fileInput.value = '';
+            submitBtn.disabled = true;
+            dropZone.classList.remove('has-file');
+            
+            activeWorkspaceData = null;
+        });
+
+        // Async form submit
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            // Validate client-side
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                showToast('Please select a PDF file.');
+                return;
+            }
+
+            // Show loading state
+            submitBtn.querySelector('.btn-text').style.display = 'none';
+            submitBtn.querySelector('.btn-loading').style.display = 'inline-flex';
+            submitBtn.disabled = true;
+            hideToast();
+
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    let detail = 'An error occurred during extraction.';
+                    try {
+                        const err = await response.json();
+                        detail = err.detail || detail;
+                    } catch (_) {}
+                    throw new Error(detail);
+                }
+
+                const json = await response.json();
+                if (!json.success) {
+                    throw new Error('Failed to generate OKF bundle.');
+                }
+
+                activeWorkspaceData = json;
+
+                showToast('Knowledge mapping complete!', false);
+
+                // Transition to Workspace View
+                setTimeout(() => {
+                    uploadView.style.display = 'none';
+                    workspaceContainer.style.display = 'flex';
+                    if (workspaceRepoTitle) {
+                        workspaceRepoTitle.textContent = json.repository_title;
+                    }
+                }, 1000);
+
+            } catch (error) {
+                showToast(error.message);
+
+            } finally {
+                // Reset button state
+                submitBtn.querySelector('.btn-text').style.display = 'inline';
+                submitBtn.querySelector('.btn-loading').style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+
+</html>
