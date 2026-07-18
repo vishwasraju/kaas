@@ -58,10 +58,11 @@ def upload_pdf(pdf: UploadFile = File(...)):
     # Validate file type
     _validate_file(pdf)
 
-    # Save uploaded file with sanitized name
-    os.makedirs("uploads", exist_ok=True)
+    # Save uploaded file with sanitized name in system temp directory (for serverless environments)
+    import tempfile
+    temp_dir = tempfile.gettempdir()
     safe_name = _sanitize_filename(pdf.filename or "upload.pdf")
-    file_path = os.path.join("uploads", safe_name)
+    file_path = os.path.join(temp_dir, safe_name)
 
     # Write with size limit check
     bytes_written = 0

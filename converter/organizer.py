@@ -20,15 +20,20 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-# Validate API key at import time for fast failure
-_api_key = os.getenv("GEMINI_API_KEY")
-if not _api_key:
-    raise EnvironmentError(
-        "GEMINI_API_KEY is not set. "
-        "Add it to your .env file or export it as an environment variable."
-    )
+client = None
 
-client = genai.Client(api_key=_api_key)
+
+def _get_client():
+    global client
+    if client is None:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise EnvironmentError(
+                "GEMINI_API_KEY environment variable is not set. "
+                "Please configure GEMINI_API_KEY in your Vercel Project Environment Variables."
+            )
+        client = genai.Client(api_key=api_key)
+    return client
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 MAX_RETRIES = int(os.getenv("GEMINI_MAX_RETRIES", "3"))
@@ -59,7 +64,7 @@ def analyze_document(document: Document) -> dict:
                 f"attempt {attempt}/{MAX_RETRIES}"
             )
 
-            response = client.models.generate_content(
+            response = _get_client().models.generate_content(
                 model=GEMINI_MODEL,
                 contents=[
                     SYSTEM_PROMPT,

@@ -114,10 +114,10 @@ class TestUploadRoute:
             files={"pdf": ("cleanup_test.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
         )
         # The uploaded file should be cleaned up in the finally block
-        upload_dir = os.path.join(os.getcwd(), "uploads")
-        if os.path.exists(upload_dir):
-            remaining = [f for f in os.listdir(upload_dir) if "cleanup_test" in f]
-            assert len(remaining) == 0, "Uploaded file should be cleaned up"
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        remaining = [f for f in os.listdir(temp_dir) if "cleanup_test" in f]
+        assert len(remaining) == 0, "Uploaded file should be cleaned up"
 
     @patch("routes.upload.process_pdf")
     def test_rte_07_response_structure(self, mock_pipeline, client, tmp_path):
