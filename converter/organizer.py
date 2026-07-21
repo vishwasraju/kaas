@@ -157,9 +157,10 @@ def analyze_document(document: Document) -> dict:
     If document page_count > GEMINI_BATCH_SIZE_PAGES, splits processing into
     page-window chunks with configurable delay to respect Free Tier API rate limits.
     """
-    batch_size = int(os.getenv("GEMINI_BATCH_SIZE_PAGES", "15"))
+    batch_size = int(os.getenv("GEMINI_BATCH_SIZE_PAGES", "25"))
     overlap = int(os.getenv("GEMINI_BATCH_OVERLAP_PAGES", "1"))
-    delay = float(os.getenv("GEMINI_BATCH_DELAY_SEC", "1.0"))
+    delay = float(os.getenv("GEMINI_BATCH_DELAY_SEC", "0.2"))
+
 
     # Single-pass for documents within batch size
     if document.page_count <= batch_size:

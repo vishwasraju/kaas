@@ -464,6 +464,12 @@
                 return;
             }
 
+            const MAX_VERCEL_BYTES = 4.5 * 1024 * 1024;
+            if (file.size > MAX_VERCEL_BYTES) {
+                showToast(`File size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds Vercel serverless upload limit of 4.5 MB. Please compress or select a smaller PDF.`);
+                return;
+            }
+
             // Show loading state
             submitBtn.querySelector('.btn-text').style.display = 'none';
             submitBtn.querySelector('.btn-loading').style.display = 'inline-flex';
@@ -480,6 +486,13 @@
                 });
 
                 if (!response.ok) {
+                    if (response.status === 413) {
+                        throw new Error('File payload too large (4.5 MB limit on Vercel uploads).');
+                    }
+                    if (response.status === 504) {
+                        throw new Error('Gateway Timeout (504). Processing took longer than Vercel serverless limit.');
+                    }
+
                     let detail = 'An error occurred during extraction.';
                     try {
                         const err = await response.json();
@@ -487,6 +500,7 @@
                     } catch (_) {}
                     throw new Error(detail);
                 }
+
 
                 const json = await response.json();
                 if (!json.success) {
