@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>PhysicsX | Accelerating Automotive Innovation with AI</title>
+  <meta name="description" content="PhysicsX accelerates industrial and automotive innovation with physics AI, improving design, manufacturing, and operation of complex systems.">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/static/car_style.css">
+</head>
+<body>
+
+  <!-- Scroll Progress Bar -->
+  <div class="scrollbar" id="scrollbar-progress-container">
+    <div id="scrollbar-progress" class="scrollbar__progress"></div>
+  </div>
+
+  <!-- Navigation Bar (PhysicsX Design) -->
+  <header class="nav" id="main-nav">
+    <a href="#" class="nav-brand" id="nav-brand-link">
+      <!-- Minimalist Symbol -->
+      <svg class="nav-brand-symbol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="#00e660" stroke-width="2.5"/>
+        <path d="M8 12H16M12 8V16" stroke="#00e660" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <span class="nav-brand-text">PhysicsX</span>
+    </a>
+    
+    <ul class="navlinks" id="nav-menu">
+      <li class="nav-item"><a id="navlink-mission" href="#purpose-section" class="nav-item-link">Mission</a></li>
+      <li class="nav-item"><a id="navlink-platform" href="#platform-section" class="nav-item-link">Platform</a></li>
+      <li class="nav-item"><a id="navlink-aero" href="#aero-section" class="nav-item-link">Aerodynamics</a></li>
+      <li class="nav-item"><a id="navlink-bespoke" href="#custom-section" class="nav-item-link">Bespoke</a></li>
+      <li class="nav-item"><a id="navlink-contact" href="#reserve-section" class="nav-item-link">Contact Us</a></li>
+    </ul>
+
+    <a href="#reserve-section" class="button is-white interactive" id="nav-action-btn">
+      <div class="button-txt">Talk to an Engineer</div>
+      <div class="arrow-dot is-inverted">
+        <img src="https://cdn.prod.website-files.com/67521ae751519bd4a23e29e8/675362dd67be2659280255b7_Arrow.svg" alt="" class="arrow">
+        <img src="https://cdn.prod.website-files.com/67521ae751519bd4a23e29e8/675362dd67be2659280255b7_Arrow.svg" alt="" class="arrow">
+      </div>
+    </a>
+  </header>
+
+  <!-- Vignette overlay for cinematic shadow depth -->
+  <div class="vignette-overlay" id="vignette-overlay-layer"></div>
+
+  <!-- Background 3D WebGL Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Mobile Configurator Panel Toggle Button -->
+  <button class="mobile-config-toggle" id="mobile-panel-toggle" aria-label="Toggle configuration panel">
+    ⚙️
+  </button>
+
+  <!-- Interactive Floating Configurator Panel (Glassmorphism) -->
+  <div class="configurator-panel hidden" id="custom-configurator">
+    <div class="config-title">
+      <span>HYPERION CONFIG</span>
+      <span style="font-size: 0.75rem; color: var(--color-accent); font-weight: 600;">LIVE 3D</span>
+    </div>
+    
+    <!-- Paint Color Swatches -->
+    <div class="config-group">
+      <span class="config-label">Chassis Paint Color</span>
+      <div class="color-swatches" id="paint-swatches">
+        <button class="swatch swatch-emerald active" data-color="emerald" aria-label="Emerald green paint"></button>
+        <button class="swatch swatch-dark" data-color="dark" aria-label="Obisidan black paint"></button>
+        <button class="swatch swatch-cyan" data-color="cyan" aria-label="Cyan paint"></button>
+        <button class="swatch swatch-purple" data-color="purple" aria-label="Vaporwave purple paint"></button>
+        <button class="swatch swatch-gold" data-color="gold" aria-label="Liquid gold paint"></button>
+      </div>
+    </div>
+    
+    <!-- Underglow Light Color -->
+    <div class="config-group">
+      <span class="config-label">LED Underglow Color</span>
+      <div class="switch-container">
+        <span>Vaporwave Purple</span>
+        <label class="switch">
+          <input type="checkbox" id="underglow-color" aria-label="Toggle underglow color">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+    
+    <!-- Headlight Power Switch -->
+    <div class="config-group">
+      <span class="config-label">Laser Matrix Headlamps</span>
+      <div class="switch-container">
+        <span>Active Light</span>
+        <label class="switch">
+          <input type="checkbox" id="headlights-power" checked aria-label="Toggle headlights power">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll-Scrubbed Content Container -->
+  <div id="scroll-container">
+    
+    <!-- Hero / Introduction Section -->
+    <section class="hero-scroller" id="hero-section">
+      <div class="hero-content">
+        <div class="z-index-2">
+          <h1 class="hero-heading">Accelerating Automotive Innovation with AI</h1>
+        </div>
+        <div class="hero-details z-index-2">
+          <p class="intro-txt">
+            Engineering development cycles are still measured in years. The design spaces that matter most go unexplored. Not because the answers don't exist, but because finding them takes too long.
+            <br><br>
+            Hyperion changes that. We embed physics AI directly into aerodynamic and structural design workflows, compressing the distance between what you can imagine and what you can build.
+          </p>
+        </div>
+      </div>
+      
+      <!-- Visual mouse scroll indicator -->
+      <div class="scroll-indicator" id="hero-scroll-indicator">
+        <div class="scroll-indicator-line"></div>
+        <span>SCROLL</span>
+      </div>
+
+      <!-- Progressive Blur Wrapper at the bottom of the hero section -->
+      <div class="progressive-blur_wrap" id="hero-blur-effect">
+        <div class="progressive-blur_panel is-1"></div>
+        <div class="progressive-blur_panel is-2"></div>
+        <div class="progressive-blur_panel is-3"></div>
+        <div class="progressive-blur_panel is-4"></div>
+        <div class="progressive-blur_panel is-5"></div>
+        <div class="progressive-blur_panel is-6"></div>
+        <div class="progressive-blur_panel is-7"></div>
+      </div>
+    </section>
+
+    <!-- Mission Section (01) -->
+    <section class="section" id="purpose-section">
+      <div class="section-title">
+        <div class="section-title-number"><div>1</div></div>
+        <h2 class="section-title-txt">Mission</h2>
+      </div>
+      <h3 class="section-heading-txt">We empower industrial organizations to build beyond human imagination and address the defining aerodynamic challenges of our time.</h3>
+      
+      <div class="grid-layout">
+        <div class="paragraph-card" id="mission-card">
+          <p>The next industrial revolution will be AI-native. Hyperion is the platform at its center: not AI bolted onto existing CAD systems, but deep learning neural networks as a core primitive of how design gets done. We are working with the engineers building the world's most complex hypercars to redefine what is possible in the time they have.</p>
+          <a class="button interactive" href="#platform-section">
+            <div class="button-txt">Explore Mission</div>
+            <div class="arrow-dot">
+              <img src="https://cdn.prod.website-files.com/67521ae751519bd4a23e29e8/675362dd67be2659280255b7_Arrow.svg" alt="" class="arrow">
+              <img src="https://cdn.prod.website-files.com/67521ae751519bd4a23e29e8/675362dd67be2659280255b7_Arrow.svg" alt="" class="arrow">
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Platform Section (02) -->
+    <section class="section" id="platform-section">
+      <div class="section-title">
+        <div class="section-title-number"><div>2</div></div>
+        <h2 class="section-title-txt">Platform</h2>
+      </div>
+      <h3 class="section-heading-txt">A real-time deep learning simulation engine running directly in WebGL.</h3>
+      
+      <div class="grid-layout right-aligned-grid">
+        <div class="paragraph-card" id="platform-card">
+          <p>The Hyperion Platform unifies physics solvers, vector fields, and real-time rendering. By predicting pressure differentials, airflow separation, and drag coefficients instantly, we eliminate the massive time delays of traditional CFD supercomputing clusters.</p>
+          
+          <div class="specs-panel" id="performance-specs">
+            <div class="spec-item">
+              <div class="spec-value">1.89s</div>
+              <div class="spec-label">0-60 MPH</div>
+            </div>
+            <div class="spec-item">
+              <div class="spec-value">2000 HP</div>
+              <div class="spec-label">Peak Power</div>
+            </div>
+            <div class="spec-item">
+              <div class="spec-value">550 mi</div>
+              <div class="spec-label">EPA Range</div>
+            </div>
+            <div class="spec-item">
+              <div class="spec-value">0.18 Cd</div>
+              <div class="spec-label">Drag Coeff</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Aerodynamics Section (03) -->
+    <section class="section" id="aero-section">
+      <div class="section-title">
+        <div class="section-title-number"><div>3</div></div>
+        <h2 class="section-title-txt">Aerodynamics</h2>
+      </div>
+      <h3 class="section-heading-txt">Manipulating fluid dynamic boundary layers and downforce vectors in real time.</h3>
+      
+      <div class="grid-layout">
+        <div class="paragraph-card" id="aero-card">
+          <p>Every curve serves a thermodynamic and aerodynamic purpose. The composite clearcoated carbon body is shaped to funnel air directly into active cooling ducts, while the dual-wing rear spoiler coordinates its angle of attack dynamically to keep the chassis glued to the tarmac under heavy load.</p>
+          <a class="button interactive" href="#custom-section">
+            <div class="button-txt">Review Aero Design</div>
+            <div class="arrow-dot">
+              <img src="https://cdn.prod.website-files.com/67521ae751519bd4a23e29e8/675362dd67be2659280255b7_Arrow.svg" alt="" class="arrow">
+              <img src="https://cdn.prod.website-files.com/67521ae751519bd4a23e29e8/675362dd67be2659280255b7_Arrow.svg" alt="" class="arrow">
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bespoke / Customizer Section (04) -->
+    <section class="section" id="custom-section">
+      <div class="section-title">
+        <div class="section-title-number"><div>4</div></div>
+        <h2 class="section-title-txt">Bespoke</h2>
+      </div>
+      <h3 class="section-heading-txt">Tune the structural paint properties, underglow wavelength, and matrix headlamps.</h3>
+      
+      <div class="grid-layout right-aligned-grid">
+        <div class="paragraph-card" id="custom-card">
+          <p>Interact with our custom physics shader configuration panel at the bottom right. Toggle the headlights, adjust underglow hues, and swap paint swatches to customize your Hyperion E-1 in high fidelity. Watch materials respond dynamically to lighting vectors.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact / Reserve Section (05) -->
+    <section class="section" id="reserve-section">
+      <div class="section-title">
+        <div class="section-title-number"><div>5</div></div>
+        <h2 class="section-title-txt">Acquire</h2>
+      </div>
+      <h3 class="section-heading-txt">Reserve your bespoke Hyperion development allocation and talk to a design engineer.</h3>
+      
+      <div class="grid-layout">
+        <div class="paragraph-card" id="reserve-card">
+          <p>Hyperion allocations are assigned sequentially. Each hypercar is customized to the client's performance envelope. Secure your allocation below and our concierge team will initiate contact.</p>
+          
+          <!-- Interactive Reserve Form -->
+          <form class="cta-form interactive" id="reservation-form" onsubmit="event.preventDefault(); alert('Reservation registered! A PhysicsX design concierge will contact you shortly.');">
+            <div class="form-group">
+              <input type="text" class="form-input" placeholder="Full Name" required id="user-name">
+            </div>
+            <div class="form-group">
+              <input type="email" class="form-input" placeholder="Email Address" required id="user-email">
+            </div>
+            <button type="submit" class="btn-primary button is-white" id="submit-reservation">
+              <span style="font-family: var(--font-title); font-weight: 700;">Confirm Allocation</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer Section (PhysicsX Design) -->
+    <footer class="footer" id="main-footer">
+      <div class="footer-head">
+        <div class="footer-head-item">
+          <a href="https://www.linkedin.com/company/physicsx/" target="_blank" class="footer-txt">LinkedIn</a>
+          <a href="https://www.instagram.com/physicsx.ai/" target="_blank" class="footer-txt">Instagram</a>
+        </div>
+        <div class="footer-head-item">
+          <a href="#reserve-section" class="button is-white interactive">
+            <div class="button-txt">Talk to an Engineer</div>
+            <div class="arrow-dot is-inverted">
+              <img src="https://cdn.prod.website-files.com/67521ae751519bd4a23e29e8/675362dd67be2659280255b7_Arrow.svg" alt="" class="arrow">
+              <img src="https://cdn.prod.website-files.com/67521ae751519bd4a23e29e8/675362dd67be2659280255b7_Arrow.svg" alt="" class="arrow">
+            </div>
+          </a>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <div class="footer-grid">
+          <div class="footer-txt">ⓒ PhysicsX Ltd. 2026</div>
+          <div class="footer-txt">
+            <strong>UK</strong><br>
+            Victoria House<br>
+            1 Leonard Circus<br>
+            London, EC2A 4DQ
+          </div>
+          <div class="footer-txt">
+            <strong>USA</strong><br>
+            Floor 2<br>
+            54 W 21st St.<br>
+            New York, NY 10010
+          </div>
+          <div class="footer-txt">
+            <a href="#" class="footer-txt" style="text-decoration: underline;">Privacy Policy</a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer-logo" id="faded-wordmark">
+        PHYSICSX
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- CDN Scripts for Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  
+  <!-- Scroll script for top progress bar -->
+  <script>
+    const progress = document.getElementById('scrollbar-progress');
+    window.addEventListener('scroll', () => {
+      const scrollLength = document.body.scrollHeight;
+      const scrollPosition = window.pageYOffset;
+      const windowHeight = window.innerHeight;
+      const scrollPercent = (scrollPosition / (scrollLength - windowHeight)) * 100;
+      progress.style.width = scrollPercent + '%';
+    });
+  </script>
+
+  <!-- Three.js App Logic -->
+  <script src="/static/car_app.js"></script>
+</body>
+</html>

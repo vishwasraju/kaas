@@ -40,13 +40,14 @@ def _format_paragraph(text: str) -> str:
             formatted_lines.append(f"- {rest}")
             continue
 
-        # 2. Bold definition terms
-        # Expects: Capitalized term (2-60 chars) followed by colon and description (at least 3 chars)
+        # 2. Bold definition terms (except section/chapter headers like "Chapter 1: System Overview")
         def_match = re.match(r"^([A-Z0-9][A-Za-z0-9\s/()\-]{1,59}):\s+(.{3,})$", stripped)
         if def_match:
             term, desc = def_match.groups()
-            formatted_lines.append(f"**{term}:** {desc}")
-            continue
+            if not re.match(r"^(Chapter|Section|Part|Appendix)\s+\d+", term.strip(), re.IGNORECASE):
+                formatted_lines.append(f"**{term}:** {desc}")
+                continue
+
 
         formatted_lines.append(line)
 

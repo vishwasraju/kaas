@@ -15,3 +15,12 @@ def home(request: Request):
         request=request,
         name="index.html"
     )
+
+
+@router.get("/car")
+def car_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="car.html"
+    )
+

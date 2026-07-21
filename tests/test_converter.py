@@ -280,3 +280,95 @@ class TestOrganizer:
                 config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
                 assert config.temperature == 0.0
                 assert config.response_mime_type == "application/json"
+
+    def test_cvt_18_document_chunking_and_boundary_stitching(self, sample_document, mock_gemini_response_text):
+        """CVT-18: Multi-page document triggers page chunking and boundary stitching."""
+        # Create a document with 5 pages
+        from models.document import Document
+        from models.page import Page
+        from models.paragraph import Paragraph
+
+        multi_doc = Document(filename="multi.pdf", filepath="/tmp/multi.pdf", page_count=5, metadata={})
+        for page_num in range(1, 6):
+            p = Page(page_number=page_num, raw_text=f"Page {page_num} text")
+            p.paragraphs = [Paragraph(index=1, text=f"Page {page_num} P1")]
+            multi_doc.pages.append(p)
+
+        chunk1_response = json.dumps({
+            "repository_title": "Multi Doc Repo",
+            "knowledge_units": [
+                {
+                    "title": "Intro Section",
+                    "start_page": 1,
+                    "end_page": 2,
+                    "segments": [{"page": 1, "start_paragraph": 1, "end_paragraph": 1}]
+                },
+                {
+                    "title": "Boundary Section",
+                    "start_page": 2,
+                    "end_page": 3,
+                    "segments": [{"page": 2, "start_paragraph": 1, "end_paragraph": 1}]
+                }
+            ]
+        })
+
+        chunk2_response = json.dumps({
+            "repository_title": "Multi Doc Repo",
+            "knowledge_units": [
+                {
+                    "title": "Boundary Section",
+                    "start_page": 3,
+                    "end_page": 4,
+                    "segments": [{"page": 3, "start_paragraph": 1, "end_paragraph": 1}]
+                },
+                {
+                    "title": "Conclusion Section",
+                    "start_page": 4,
+                    "end_page": 5,
+                    "segments": [{"page": 5, "start_paragraph": 1, "end_paragraph": 1}]
+                }
+            ]
+        })
+
+        mock_r1 = MagicMock()
+        mock_r1.text = chunk1_response
+        mock_r2 = MagicMock()
+        mock_r2.text = chunk2_response
+
+        with patch.dict(os.environ, {
+            "GEMINI_API_KEY": "test-key",
+            "GEMINI_BATCH_SIZE_PAGES": "3",
+            "GEMINI_BATCH_OVERLAP_PAGES": "1",
+            "GEMINI_BATCH_DELAY_SEC": "0.0"
+        }):
+            with patch("converter.organizer.client") as mock_client:
+                mock_client.models.generate_content.side_effect = [mock_r1, mock_r2]
+                from converter.organizer import analyze_document
+                result = analyze_document(multi_doc)
+
+                # Should have 3 knowledge units (Boundary Section stitched together)
+                units = result["knowledge_units"]
+                assert len(units) == 3
+                boundary_unit = next(u for u in units if u["title"] == "Boundary Section")
+                assert len(boundary_unit["segments"]) == 2
+                assert boundary_unit["end_page"] == 4
+
+    def test_cvt_19_slice_document_helper(self, sample_document):
+        """CVT-19: _slice_document creates valid sub-document slice."""
+        from converter.organizer import _slice_document
+        sliced = _slice_document(sample_document, 0, 1)
+        assert sliced.filename == sample_document.filename
+        assert sliced.page_count == 1
+        assert len(sliced.pages) == 1
+
+    def test_cvt_20_merge_chunk_analyses(self):
+        """CVT-20: _merge_chunk_analyses merges chunk dictionaries correctly."""
+        from converter.organizer import _merge_chunk_analyses
+        chunks = [
+            {"repository_title": "Repo", "knowledge_units": [{"title": "Part 1", "start_page": 1, "end_page": 2, "segments": []}]},
+            {"repository_title": "Repo", "knowledge_units": [{"title": "Part 2", "start_page": 3, "end_page": 4, "segments": []}]}
+        ]
+        merged = _merge_chunk_analyses(chunks)
+        assert merged["repository_title"] == "Repo"
+        assert len(merged["knowledge_units"]) == 2
+
