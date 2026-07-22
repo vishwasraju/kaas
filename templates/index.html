@@ -206,6 +206,7 @@
             border-radius: 6px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            flex-shrink: 0;
         }
 
         .service-badge.active {
@@ -220,11 +221,454 @@
             border: 1px solid rgba(156, 163, 175, 0.15);
         }
 
+        .service-badge.hybrid {
+            background: rgba(251, 191, 36, 0.12);
+            color: var(--warning);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+
         .upload-view {
             display: flex;
             min-height: 100vh;
             align-items: center;
             justify-content: center;
+        }
+
+        /* ============================================= */
+        /* ---- RAG Chat Workspace ----                  */
+        /* ============================================= */
+        #rag-workspace {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            flex-direction: column;
+            background: var(--bg);
+        }
+
+        /* Header */
+        .rag-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.5rem;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .rag-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .rag-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text);
+        }
+
+        .rag-logo-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #6c63ff 0%, #a855f7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .rag-doc-name {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 0.25rem 0.65rem;
+            background: rgba(108, 99, 255, 0.08);
+            border: 1px solid rgba(108, 99, 255, 0.15);
+            border-radius: 6px;
+        }
+
+        .rag-header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .rag-stats-badge {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            padding: 0.2rem 0.5rem;
+            background: rgba(52, 211, 153, 0.08);
+            border: 1px solid rgba(52, 211, 153, 0.15);
+            border-radius: 6px;
+        }
+
+        .btn-rag-back {
+            padding: 0.4rem 0.75rem;
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            color: #d1d5db;
+            font-family: var(--font);
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .btn-rag-back:hover {
+            background: #374151;
+            color: #fff;
+        }
+
+        .btn-rag-back svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Chat Area */
+        .rag-chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            scroll-behavior: smooth;
+        }
+
+        /* Welcome */
+        .rag-welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 3rem 1.5rem;
+            flex: 1;
+        }
+
+        .rag-welcome-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(108, 99, 255, 0.12) 0%, rgba(168, 85, 247, 0.12) 100%);
+            border: 1px solid rgba(108, 99, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .rag-welcome-icon svg {
+            width: 32px;
+            height: 32px;
+            color: var(--accent);
+        }
+
+        .rag-welcome h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .rag-welcome p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            max-width: 420px;
+            line-height: 1.5;
+            margin-bottom: 1.25rem;
+        }
+
+        .rag-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            max-width: 520px;
+        }
+
+        .rag-suggestion-chip {
+            padding: 0.45rem 0.85rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .rag-suggestion-chip:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(108, 99, 255, 0.06);
+        }
+
+        /* Messages */
+        .rag-message {
+            display: flex;
+            gap: 0.75rem;
+            max-width: 760px;
+            width: 100%;
+            margin: 0 auto;
+            animation: msg-appear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes msg-appear {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .rag-message.user {
+            flex-direction: row-reverse;
+        }
+
+        .rag-message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .rag-message.user .rag-message-avatar {
+            background: linear-gradient(135deg, #6c63ff, #a855f7);
+            color: #fff;
+        }
+
+        .rag-message.assistant .rag-message-avatar {
+            background: rgba(52, 211, 153, 0.15);
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            color: var(--success);
+        }
+
+        .rag-message-content {
+            padding: 0.85rem 1.1rem;
+            border-radius: 14px;
+            font-size: 0.88rem;
+            line-height: 1.6;
+            max-width: 85%;
+        }
+
+        .rag-message.user .rag-message-content {
+            background: linear-gradient(135deg, #6c63ff 0%, #7f78ff 100%);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .rag-message.assistant .rag-message-content {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-bottom-left-radius: 4px;
+        }
+
+        .rag-message.assistant .rag-message-content p {
+            margin-bottom: 0.5rem;
+        }
+
+        .rag-message.assistant .rag-message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Sources accordion */
+        .rag-sources {
+            margin-top: 0.75rem;
+            border-top: 1px solid var(--border);
+            padding-top: 0.65rem;
+        }
+
+        .rag-sources-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            color: var(--accent);
+            cursor: pointer;
+            font-family: var(--font);
+            font-weight: 500;
+            background: none;
+            border: none;
+            padding: 0;
+            transition: color 0.2s ease;
+        }
+
+        .rag-sources-toggle:hover {
+            color: var(--accent-hover);
+        }
+
+        .rag-sources-toggle svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.2s ease;
+        }
+
+        .rag-sources-toggle.expanded svg {
+            transform: rotate(180deg);
+        }
+
+        .rag-sources-list {
+            display: none;
+            margin-top: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .rag-sources-list.visible {
+            display: flex;
+        }
+
+        .rag-source-item {
+            font-size: 0.73rem;
+            padding: 0.4rem 0.6rem;
+            background: rgba(108, 99, 255, 0.06);
+            border: 1px solid rgba(108, 99, 255, 0.1);
+            border-radius: 6px;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        .rag-source-item strong {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Typing indicator */
+        .rag-typing {
+            display: flex;
+            gap: 4px;
+            padding: 0.5rem 0;
+        }
+
+        .rag-typing span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: typing-bounce 1.4s ease-in-out infinite;
+        }
+
+        .rag-typing span:nth-child(2) { animation-delay: 0.2s; }
+        .rag-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing-bounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        /* Search Stats */
+        .rag-search-stats {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .rag-stat {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .rag-stat-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+        }
+
+        .rag-stat-dot.vector { background: #6c63ff; }
+        .rag-stat-dot.bm25 { background: #f59e0b; }
+        .rag-stat-dot.reranked { background: #34d399; }
+
+        /* Input Bar */
+        .rag-input-bar {
+            padding: 0.75rem 1.5rem 1rem;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .rag-input-wrapper {
+            max-width: 760px;
+            margin: 0 auto;
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+
+        .rag-input-field {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 0.9rem;
+            resize: none;
+            max-height: 120px;
+            min-height: 44px;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            line-height: 1.4;
+        }
+
+        .rag-input-field:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .rag-input-field::placeholder {
+            color: var(--text-muted);
+        }
+
+        .rag-send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--accent);
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .rag-send-btn:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .rag-send-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .rag-send-btn svg {
+            width: 20px;
+            height: 20px;
         }
     </style>
 </head>
@@ -247,19 +691,19 @@
                         </div>
                         <span class="service-badge active">Active</span>
                     </div>
-                    <div class="service-card disabled" id="service-rag" data-service="rag">
+                    <div class="service-card" id="service-rag" data-service="rag">
                         <div class="service-info">
                             <div class="service-title">RAG (Retrieval-Augmented Gen)</div>
-                            <div class="service-desc">Vector-optimized text chunks with semantic separation.</div>
+                            <div class="service-desc">Vector-optimized text chunks with semantic separation. Ask questions about your PDF.</div>
                         </div>
-                        <span class="service-badge soon">Soon</span>
+                        <span class="service-badge active">Active</span>
                     </div>
-                    <div class="service-card disabled" id="service-rag-okf" data-service="rag-okf">
+                    <div class="service-card" id="service-rag-okf" data-service="rag-okf">
                         <div class="service-info">
                             <div class="service-title">RAG + OKF Hybrid</div>
-                            <div class="service-desc">Combines concept mapping with vector database chunks.</div>
+                            <div class="service-desc">Combines OKF concept mapping with RAG vector database chunks.</div>
                         </div>
-                        <span class="service-badge soon">Soon</span>
+                        <span class="service-badge hybrid">Hybrid</span>
                     </div>
                 </div>
 
@@ -291,7 +735,7 @@
         </div>
     </div>
 
-    <!-- Interactive Success View -->
+    <!-- OKF Success View -->
     <div id="workspace-container">
         <div class="success-card">
             <div class="success-icon-container">
@@ -323,6 +767,61 @@
         </div>
     </div>
 
+    <!-- RAG Chat Workspace -->
+    <div id="rag-workspace">
+        <!-- Header -->
+        <div class="rag-header">
+            <div class="rag-header-left">
+                <div class="rag-logo">
+                    <div class="rag-logo-icon">R</div>
+                    RAG Playground
+                </div>
+                <span class="rag-doc-name" id="rag-doc-name">document.pdf</span>
+            </div>
+            <div class="rag-header-right">
+                <span class="rag-stats-badge" id="rag-chunk-count">0 chunks indexed</span>
+                <button class="btn-rag-back" id="btn-rag-back">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    New Upload
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="rag-chat-area" id="rag-chat-area">
+            <div class="rag-welcome" id="rag-welcome">
+                <div class="rag-welcome-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                </div>
+                <h2>Ask anything about your document</h2>
+                <p>Your PDF has been indexed with hybrid vector + keyword search. Ask questions and get precise, cited answers powered by Gemini AI.</p>
+                <div class="rag-suggestions" id="rag-suggestions">
+                    <button class="rag-suggestion-chip" data-q="What is this document about?">What is this document about?</button>
+                    <button class="rag-suggestion-chip" data-q="Summarize the key points">Summarize the key points</button>
+                    <button class="rag-suggestion-chip" data-q="What are the main conclusions?">What are the main conclusions?</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Bar -->
+        <div class="rag-input-bar">
+            <div class="rag-input-wrapper">
+                <textarea class="rag-input-field" id="rag-input" placeholder="Ask a question about your document..." rows="1"></textarea>
+                <button class="rag-send-btn" id="rag-send-btn" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('pdf-input');
@@ -349,10 +848,14 @@
                 card.classList.add('selected');
                 selectedService = card.dataset.service;
                 
-                // Update submit button text if needed
+                // Update submit button text based on service
                 const btnText = submitBtn.querySelector('.btn-text');
                 if (selectedService === 'okf') {
                     btnText.textContent = 'Extract to OKF';
+                } else if (selectedService === 'rag') {
+                    btnText.textContent = 'Index for RAG';
+                } else if (selectedService === 'rag-okf') {
+                    btnText.textContent = 'Extract & Index';
                 }
             });
         });
@@ -364,7 +867,19 @@
         const btnBack = document.getElementById('btn-back');
         const btnDownload = document.getElementById('btn-download');
         
-        let activeWorkspaceData = null; // Holds the parsed JSON response
+        // RAG workspace elements
+        const ragWorkspace = document.getElementById('rag-workspace');
+        const ragChatArea = document.getElementById('rag-chat-area');
+        const ragInput = document.getElementById('rag-input');
+        const ragSendBtn = document.getElementById('rag-send-btn');
+        const ragWelcome = document.getElementById('rag-welcome');
+        const ragDocName = document.getElementById('rag-doc-name');
+        const ragChunkCount = document.getElementById('rag-chunk-count');
+        const btnRagBack = document.getElementById('btn-rag-back');
+
+        let activeWorkspaceData = null;
+        let ragSessionId = null;
+        let ragIsQuerying = false;
 
         // File selection
         fileInput.addEventListener('change', () => {
@@ -437,21 +952,237 @@
             showToast('Download started successfully!', false);
         });
 
-        // New Upload View Transition
+        // New Upload View Transition (from OKF success)
         btnBack.addEventListener('click', () => {
             workspaceContainer.style.display = 'none';
             uploadView.style.display = 'flex';
-            
-            // Clean up state
+            resetUploadState();
+        });
+
+        // New Upload from RAG workspace
+        btnRagBack.addEventListener('click', () => {
+            // Clean up RAG session
+            if (ragSessionId) {
+                fetch(`/api/rag/session/${ragSessionId}`, { method: 'DELETE' }).catch(() => {});
+            }
+            ragWorkspace.style.display = 'none';
+            uploadView.style.display = 'flex';
+            resetUploadState();
+            resetRagChat();
+        });
+
+        function resetUploadState() {
             fileName.textContent = '';
             fileInput.value = '';
             submitBtn.disabled = true;
             dropZone.classList.remove('has-file');
-            
             activeWorkspaceData = null;
+            ragSessionId = null;
+        }
+
+        function resetRagChat() {
+            ragChatArea.innerHTML = '';
+            ragChatArea.appendChild(ragWelcome.cloneNode(true));
+            const newWelcome = ragChatArea.querySelector('.rag-welcome');
+            newWelcome.style.display = 'flex';
+            // Re-bind suggestion chips
+            newWelcome.querySelectorAll('.rag-suggestion-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    ragInput.value = chip.dataset.q;
+                    ragSendBtn.disabled = false;
+                    sendRagQuery();
+                });
+            });
+        }
+
+        // ==========================================
+        // RAG Chat Functions
+        // ==========================================
+
+        function addMessage(role, content, sources = null, stats = null) {
+            // Hide welcome on first message
+            const welcome = ragChatArea.querySelector('.rag-welcome');
+            if (welcome) welcome.style.display = 'none';
+
+            const msg = document.createElement('div');
+            msg.className = `rag-message ${role}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'rag-message-avatar';
+            avatar.textContent = role === 'user' ? 'U' : 'AI';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'rag-message-content';
+
+            // Simple markdown-like rendering
+            const formatted = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`(.*?)`/g, '<code style="background:rgba(108,99,255,0.1);padding:0.1em 0.3em;border-radius:4px;font-size:0.85em;">$1</code>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+            contentDiv.innerHTML = `<p>${formatted}</p>`;
+
+            // Add sources if present
+            if (sources && sources.length > 0) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.className = 'rag-sources';
+
+                const toggle = document.createElement('button');
+                toggle.className = 'rag-sources-toggle';
+                toggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> ${sources.length} source${sources.length > 1 ? 's' : ''} referenced`;
+
+                const list = document.createElement('div');
+                list.className = 'rag-sources-list';
+
+                sources.forEach((src, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'rag-source-item';
+                    const pageInfo = src.metadata && src.metadata.page_number ? ` · Page ${src.metadata.page_number}` : '';
+                    const scoreInfo = src.score ? ` · Score: ${src.score.toFixed(3)}` : '';
+                    const preview = src.text ? src.text.substring(0, 120) + (src.text.length > 120 ? '…' : '') : '';
+                    item.innerHTML = `<strong>Chunk ${i + 1}${pageInfo}${scoreInfo}</strong><br>${preview}`;
+                    list.appendChild(item);
+                });
+
+                toggle.addEventListener('click', () => {
+                    toggle.classList.toggle('expanded');
+                    list.classList.toggle('visible');
+                });
+
+                sourcesDiv.appendChild(toggle);
+                sourcesDiv.appendChild(list);
+                contentDiv.appendChild(sourcesDiv);
+            }
+
+            // Add search stats
+            if (stats) {
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'rag-search-stats';
+                if (stats.vector_results !== undefined) {
+                    statsDiv.innerHTML += `<span class="rag-stat"><span class="rag-stat-dot vector"></span> ${stats.vector_results} vector</span>`;
+                }
+                if (stats.bm25_results !== undefined) {
+                    statsDiv.innerHTML += `<span class="rag-stat"><span class="rag-stat-dot bm25"></span> ${stats.bm25_results} BM25</span>`;
+                }
+                if (stats.reranked !== undefined) {
+                    statsDiv.innerHTML += `<span class="rag-stat"><span class="rag-stat-dot reranked"></span> ${stats.reranked} reranked</span>`;
+                }
+                if (stats.latency_ms !== undefined) {
+                    statsDiv.innerHTML += `<span class="rag-stat">⚡ ${stats.latency_ms}ms</span>`;
+                }
+                contentDiv.appendChild(statsDiv);
+            }
+
+            msg.appendChild(avatar);
+            msg.appendChild(contentDiv);
+            ragChatArea.appendChild(msg);
+            ragChatArea.scrollTop = ragChatArea.scrollHeight;
+
+            return msg;
+        }
+
+        function addTypingIndicator() {
+            const msg = document.createElement('div');
+            msg.className = 'rag-message assistant';
+            msg.id = 'rag-typing-indicator';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'rag-message-avatar';
+            avatar.textContent = 'AI';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'rag-message-content';
+            contentDiv.innerHTML = '<div class="rag-typing"><span></span><span></span><span></span></div>';
+
+            msg.appendChild(avatar);
+            msg.appendChild(contentDiv);
+            ragChatArea.appendChild(msg);
+            ragChatArea.scrollTop = ragChatArea.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('rag-typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        async function sendRagQuery() {
+            const question = ragInput.value.trim();
+            if (!question || ragIsQuerying || !ragSessionId) return;
+
+            ragIsQuerying = true;
+            ragSendBtn.disabled = true;
+            ragInput.value = '';
+            ragInput.style.height = 'auto';
+
+            addMessage('user', question);
+            addTypingIndicator();
+
+            try {
+                const response = await fetch('/api/rag/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: ragSessionId,
+                        question: question
+                    })
+                });
+
+                removeTypingIndicator();
+
+                if (!response.ok) {
+                    let detail = 'An error occurred while processing your question.';
+                    try {
+                        const err = await response.json();
+                        detail = err.detail || detail;
+                    } catch (_) {}
+                    addMessage('assistant', `⚠️ ${detail}`);
+                    return;
+                }
+
+                const data = await response.json();
+                addMessage('assistant', data.answer, data.sources || [], data.stats || {});
+
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('assistant', `⚠️ Network error: ${error.message}`);
+            } finally {
+                ragIsQuerying = false;
+                ragSendBtn.disabled = false;
+                ragInput.focus();
+            }
+        }
+
+        // RAG input handling
+        ragInput.addEventListener('input', () => {
+            ragSendBtn.disabled = ragInput.value.trim().length === 0;
+            // Auto-resize textarea
+            ragInput.style.height = 'auto';
+            ragInput.style.height = Math.min(ragInput.scrollHeight, 120) + 'px';
         });
 
-        // Async form submit
+        ragInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendRagQuery();
+            }
+        });
+
+        ragSendBtn.addEventListener('click', sendRagQuery);
+
+        // Suggestion chips
+        document.querySelectorAll('.rag-suggestion-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                ragInput.value = chip.dataset.q;
+                ragSendBtn.disabled = false;
+                sendRagQuery();
+            });
+        });
+
+        // ==========================================
+        // Async Form Submit
+        // ==========================================
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -478,6 +1209,7 @@
 
             const formData = new FormData();
             formData.append('pdf', file);
+            formData.append('mode', selectedService);
 
             try {
                 const response = await fetch('/upload', {
@@ -501,24 +1233,49 @@
                     throw new Error(detail);
                 }
 
-
                 const json = await response.json();
                 if (!json.success) {
-                    throw new Error('Failed to generate OKF bundle.');
+                    throw new Error('Processing failed.');
                 }
 
                 activeWorkspaceData = json;
 
-                showToast('Knowledge mapping complete!', false);
+                const mode = json.mode || selectedService;
 
-                // Transition to Workspace View
-                setTimeout(() => {
-                    uploadView.style.display = 'none';
-                    workspaceContainer.style.display = 'flex';
-                    if (workspaceRepoTitle) {
-                        workspaceRepoTitle.textContent = json.repository_title;
-                    }
-                }, 1000);
+                if (mode === 'rag' || mode === 'rag-okf') {
+                    // Store RAG session
+                    ragSessionId = json.session_id;
+                    
+                    // Update RAG workspace header
+                    ragDocName.textContent = file.name;
+                    ragChunkCount.textContent = `${json.chunk_count || 0} chunks indexed`;
+
+                    showToast('Document indexed for RAG!', false);
+
+                    // Transition to RAG workspace
+                    setTimeout(() => {
+                        uploadView.style.display = 'none';
+                        ragWorkspace.style.display = 'flex';
+                        ragInput.focus();
+
+                        // If hybrid mode with OKF, store download data
+                        if (mode === 'rag-okf' && json.zip_base64) {
+                            // Could add download button in RAG header later
+                        }
+                    }, 800);
+
+                } else {
+                    // OKF mode — show success card
+                    showToast('Knowledge mapping complete!', false);
+
+                    setTimeout(() => {
+                        uploadView.style.display = 'none';
+                        workspaceContainer.style.display = 'flex';
+                        if (workspaceRepoTitle) {
+                            workspaceRepoTitle.textContent = json.repository_title;
+                        }
+                    }, 1000);
+                }
 
             } catch (error) {
                 showToast(error.message);

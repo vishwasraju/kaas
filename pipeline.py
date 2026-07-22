@@ -13,6 +13,7 @@ Chains all processing stages:
 
 import logging
 import time
+import uuid
 
 from extractor.pdf_reader import read_pdf
 from canonicalizer.pipeline import canonicalize
@@ -22,6 +23,7 @@ from generator.generator import generate_repository
 from validator.validator import validate
 from writer.writer import write_zip
 from tester.repository_checker import check_repository
+from rag.rag_pipeline import RAGPipeline, _sessions
 
 logger = logging.getLogger(__name__)
 
@@ -53,15 +55,18 @@ def _timed(step_name: str, func, *args, **kwargs):
         raise PipelineError(step_name, str(e), cause=e) from e
 
 
-def process_pdf(pdf_path: str) -> str:
+def process_pdf(pdf_path: str, mode: str = "okf") -> tuple:
     """
     Full extraction pipeline.
 
     Args:
         pdf_path: Path to the uploaded PDF file.
+        mode: "okf", "rag", or "rag-okf"
 
     Returns:
-        Path to the generated output.zip file.
+        For mode="okf": (zip_path, repository)
+        For mode="rag": (None, document, session_id)
+        For mode="rag-okf": (zip_path, repository, session_id)
     """
 
     total_start = time.time()
@@ -72,6 +77,13 @@ def process_pdf(pdf_path: str) -> str:
 
     # Step 2: Canonicalize text
     document = _timed("Step 2: Canonicalizing text", canonicalize, document)
+
+    if mode == "rag":
+        session_id = str(uuid.uuid4())
+        rag_pipeline = RAGPipeline()
+        _timed("Step 3 (RAG): Indexing Document", rag_pipeline.index_document, document, session_id)
+        _sessions[session_id] = rag_pipeline
+        return None, document, session_id
 
     # Step 3: AI analyzes document structure
     analysis = _timed(
@@ -112,5 +124,12 @@ def process_pdf(pdf_path: str) -> str:
 
     total_elapsed = time.time() - total_start
     logger.info(f"Pipeline completed in {total_elapsed:.2f}s")
+    
+    if mode == "rag-okf":
+        session_id = str(uuid.uuid4())
+        rag_pipeline = RAGPipeline()
+        _timed("Step 7 (RAG): Indexing Repository", rag_pipeline.index_repository, repository, document, session_id)
+        _sessions[session_id] = rag_pipeline
+        return zip_path, repository, session_id
 
     return zip_path, repository

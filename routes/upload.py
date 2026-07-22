@@ -4,11 +4,13 @@ import shutil
 import uuid
 import logging
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from pipeline import process_pdf
 from writer.writer import cleanup_temp_dir
+from rag.rag_pipeline import _sessions
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +21,9 @@ MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 ALLOWED_EXTENSIONS = {".pdf"}
 
+class RAGQuery(BaseModel):
+    session_id: str
+    question: str
 
 def _sanitize_filename(filename: str) -> str:
     """Sanitize filename to prevent path traversal."""
@@ -50,9 +55,9 @@ def _validate_file(pdf: UploadFile) -> None:
 
 
 @router.post("/upload")
-def upload_pdf(pdf: UploadFile = File(...)):
+def upload_pdf(pdf: UploadFile = File(...), mode: str = Form("okf")):
     """
-    Upload a PDF and receive a ZIP containing OKF repository files.
+    Upload a PDF and process based on mode.
     """
 
     # Validate file type
@@ -81,8 +86,24 @@ def upload_pdf(pdf: UploadFile = File(...)):
     zip_path = None
     try:
         # Run extraction pipeline
-        logger.info("Processing PDF: %s", safe_name)
-        zip_path, repository = process_pdf(file_path)
+        logger.info("Processing PDF: %s with mode: %s", safe_name, mode)
+        result = process_pdf(file_path, mode=mode)
+        
+        if mode == "rag":
+            _, document, session_id = result
+            return {
+                "success": True,
+                "mode": "rag",
+                "session_id": session_id,
+                "document_title": document.filename,
+                "chunk_count": _sessions[session_id].vector_store.collection.count() if _sessions.get(session_id) and _sessions[session_id].vector_store.collection else 0
+            }
+            
+        if mode == "rag-okf":
+            zip_path, repository, session_id = result
+        else:
+            zip_path, repository = result
+            session_id = None
 
         import base64
         with open(zip_path, "rb") as f:
@@ -102,12 +123,19 @@ def upload_pdf(pdf: UploadFile = File(...)):
                 "citations": okf.citations,
             })
 
-        return {
+        response = {
             "success": True,
             "repository_title": repository.title,
             "zip_base64": zip_base64,
             "files": files_data
         }
+        
+        if mode == "rag-okf":
+            response["mode"] = "rag-okf"
+            response["session_id"] = session_id
+            response["chunk_count"] = _sessions[session_id].vector_store.collection.count() if _sessions.get(session_id) and _sessions[session_id].vector_store.collection else 0
+            
+        return response
 
     except HTTPException:
         raise
@@ -123,3 +151,25 @@ def upload_pdf(pdf: UploadFile = File(...)):
         # Clean up temp directory from write_zip
         if zip_path:
             cleanup_temp_dir(zip_path)
+
+@router.post("/api/rag/query")
+def rag_query(query: RAGQuery):
+    """Query a RAG session."""
+    session_id = query.session_id
+    if session_id not in _sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    try:
+        pipeline = _sessions[session_id]
+        return pipeline.query(query.question)
+    except Exception as e:
+        logger.error(f"RAG query failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+        
+@router.delete("/api/rag/session/{session_id}")
+def delete_rag_session(session_id: str):
+    """Clean up a RAG session."""
+    if session_id in _sessions:
+        del _sessions[session_id]
+        return {"success": True, "message": "Session deleted"}
+    raise HTTPException(status_code=404, detail="Session not found")
