@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "app.py": {
-      "maxDuration": 60,
+      "maxDuration": 15,
       "memory": 1024
     }
   },
@@ -19,4 +19,5 @@
     }
   ]
 }
+
 
