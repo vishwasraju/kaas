@@ -225,6 +225,7 @@ import sys
 import os
 import json
 import math
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -246,16 +247,52 @@ class OfflineRAG:
         
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            print("⚠️ Warning: GEMINI_API_KEY not found in environment.")
+            print("Warning: GEMINI_API_KEY not found in environment.")
             self.client = None
         else:
             from google import genai
             self.client = genai.Client(api_key=api_key)
 
+    def _call_api_with_retry(self, api_func, *args, **kwargs):
+        from google.genai.errors import ClientError
+        max_retries = 3
+        delay = 2.0
+        for attempt in range(max_retries):
+            try:
+                return api_func(*args, **kwargs)
+            except ClientError as e:
+                if e.code == 429:
+                    if attempt < max_retries - 1:
+                        recommended_delay = None
+                        try:
+                            if hasattr(e, 'details') and isinstance(e.details, dict):
+                                err_details = e.details.get('error', {}).get('details', [])
+                                for detail in err_details:
+                                    if detail.get('@type') == 'type.googleapis.com/google.rpc.RetryInfo':
+                                        delay_str = detail.get('retryDelay', '')
+                                        if delay_str.endswith('s'):
+                                            recommended_delay = float(delay_str[:-1])
+                        except Exception:
+                            pass
+                        
+                        sleep_time = delay
+                        if recommended_delay is not None:
+                            sleep_time = min(recommended_delay, 45.0)
+                        
+                        print(f"Rate limit hit (429 RESOURCE_EXHAUSTED). Retrying in {sleep_time:.1f}s... (Attempt {attempt + 1}/{max_retries})")
+                        time.sleep(sleep_time)
+                        delay *= 2
+                        continue
+                raise e
+
     def search(self, question, top_k=3):
         if not self.client:
             raise ValueError("GEMINI_API_KEY is required to convert query into vector.")
-        res = self.client.models.embed_content(model=self.model, contents=[question])
+        res = self._call_api_with_retry(
+            self.client.models.embed_content,
+            model=self.model,
+            contents=[question]
+        )
         q_emb = res.embeddings[0].values
         
         scored = []
@@ -282,15 +319,31 @@ class OfflineRAG:
         prompt = f"Context:\\n{context}\\n\\nQuestion: {question}\\n\\nAnswer based strictly on context:"
         
         from google.genai import types
-        res = self.client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction="You are a helpful assistant answering questions based strictly on context.",
-                temperature=0.0
-            )
-        )
-        return res.text, results
+        candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        
+        last_exception = None
+        for model in candidate_models:
+            try:
+                res = self._call_api_with_retry(
+                    self.client.models.generate_content,
+                    model=model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction="You are a helpful assistant answering questions based strictly on context.",
+                        temperature=0.0
+                    )
+                )
+                return res.text, results
+            except Exception as e:
+                from google.genai.errors import ClientError
+                if isinstance(e, ClientError) and e.code == 429:
+                    print(f"Model '{model}' hit rate limit. Trying fallback model...")
+                    last_exception = e
+                    continue
+                raise e
+                
+        if last_exception:
+            raise last_exception
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -298,15 +351,26 @@ if __name__ == "__main__":
         sys.exit(1)
         
     question = sys.argv[1]
-    print(f"\\n🔍 Searching vector_db.json for: '{question}'\\n")
+    print(f"\\nSearching vector_db.json for: '{question}'\\n")
     
-    rag = OfflineRAG()
-    answer, sources = rag.answer(question)
-    
-    print("🤖 Answer:\\n", answer)
-    print("\\n📌 Sources:")
-    for i, s in enumerate(sources, 1):
-        print(f"[{i}] Page {s['metadata'].get('page_number', 'N/A')} (Score: {s['similarity_score']}): {s['text'][:120]}...")
+    try:
+        rag = OfflineRAG()
+        answer, sources = rag.answer(question)
+        
+        print("Answer:\\n", answer)
+        print("\\nSources:")
+        for i, s in enumerate(sources, 1):
+            print(f"[{i}] Page {s['metadata'].get('page_number', 'N/A')} (Score: {s['similarity_score']}): {s['text'][:120]}...")
+    except Exception as e:
+        from google.genai.errors import ClientError
+        if isinstance(e, ClientError):
+            print(f"\\n[Client Error] Gemini API Client Error (Status Code: {e.code})")
+            print(f"Details: {e.message}")
+            if e.code == 429:
+                print("\\n[Tip] You have exceeded your Gemini API rate limit or quota. If you are on the Free Tier, wait a moment before trying again, check your rate limits, or set up a billing profile for higher limits.")
+        else:
+            print(f"\\n[Error] {e}")
+        sys.exit(1)
 '''
 
 RAG_README_CONTENT = '''# Offline Vector RAG Package
