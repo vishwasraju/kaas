@@ -319,7 +319,7 @@ class OfflineRAG:
         prompt = f"Context:\\n{context}\\n\\nQuestion: {question}\\n\\nAnswer based strictly on context:"
         
         from google.genai import types
-        candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-flash-latest"]
         
         last_exception = None
         for model in candidate_models:
