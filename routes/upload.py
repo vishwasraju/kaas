@@ -104,11 +104,7 @@ def upload_pdf(pdf: UploadFile = File(...), mode: str = Form("okf")):
                 "chunk_count": _sessions[session_id].vector_store.collection.count() if _sessions.get(session_id) and _sessions[session_id].vector_store.collection else 0
             }
             
-        if mode == "rag-okf":
-            zip_path, repository, session_id = result
-        else:
-            zip_path, repository = result
-            session_id = None
+        zip_path, repository = result
 
         import base64
         with open(zip_path, "rb") as f:
@@ -128,19 +124,12 @@ def upload_pdf(pdf: UploadFile = File(...), mode: str = Form("okf")):
                 "citations": okf.citations,
             })
 
-        response = {
+        return {
             "success": True,
             "repository_title": repository.title,
             "zip_base64": zip_base64,
             "files": files_data
         }
-        
-        if mode == "rag-okf":
-            response["mode"] = "rag-okf"
-            response["session_id"] = session_id
-            response["chunk_count"] = _sessions[session_id].vector_store.collection.count() if _sessions.get(session_id) and _sessions[session_id].vector_store.collection else 0
-            
-        return response
 
     except HTTPException:
         raise

@@ -52,45 +52,6 @@ class RAGPipeline:
         
         return len(chunks)
 
-    def index_repository(self, repository: Repository, document: Document, session_id: str):
-        """Index an OKF repository. Uses OKF concept files as chunks."""
-        self.session_id = session_id
-        
-        chunks = []
-        chunk_index = 0
-        
-        for file in repository.files:
-            # We skip index.md or other structural files if they don't have good content,
-            # but usually OKF files have content. We'll use the title and content.
-            if not file.content or not file.content.strip():
-                continue
-                
-            text = f"Title: {file.title}\nDescription: {file.description}\n\n{file.content}"
-            
-            chunks.append({
-                "id": f"okf_{uuid.uuid4()}",
-                "text": text,
-                "metadata": {
-                    "chunk_index": chunk_index,
-                    "original_section_title": file.title,
-                    "page_number": -1,
-                    "type": file.type
-                }
-            })
-            chunk_index += 1
-            
-        # 2. Vector Store
-        self.vector_store.create_collection(session_id)
-        self.vector_store.add_chunks(chunks)
-        
-        # 3. BM25
-        self.bm25_retriever.index(chunks)
-        
-        # 4. Hybrid
-        self.hybrid_retriever = HybridRetriever(self.vector_store, self.bm25_retriever)
-        
-        return len(chunks)
-
     def query(self, question: str, top_k: int = 5) -> Dict[str, Any]:
         """Query the indexed data and generate an answer."""
         if not self.hybrid_retriever:

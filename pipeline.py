@@ -61,12 +61,11 @@ def process_pdf(pdf_path: str, mode: str = "okf") -> tuple:
 
     Args:
         pdf_path: Path to the uploaded PDF file.
-        mode: "okf", "rag", or "rag-okf"
+        mode: "okf" or "rag"
 
     Returns:
         For mode="okf": (zip_path, repository)
-        For mode="rag": (None, document, session_id)
-        For mode="rag-okf": (zip_path, repository, session_id)
+        For mode="rag": (zip_path, document, session_id)
     """
 
     total_start = time.time()
@@ -118,14 +117,6 @@ def process_pdf(pdf_path: str, mode: str = "okf") -> tuple:
             f"Integrity Check: {result['missing']} missing paragraphs, "
             f"{result['duplicates']} duplicate paragraphs. Continuing to package bundle."
         )
-
-    if mode == "rag-okf":
-        session_id = str(uuid.uuid4())
-        rag_pipeline = RAGPipeline()
-        _timed("Step 6 (RAG): Indexing Repository", rag_pipeline.index_repository, repository, document, session_id)
-        _sessions[session_id] = rag_pipeline
-        zip_path = _timed("Step 7: Writing ZIP archive with OKF & Vector DB", write_zip, repository, None, rag_pipeline)
-        return zip_path, repository, session_id
 
     # Step 6: Write ZIP archive
     zip_path = _timed("Step 6: Writing ZIP archive", write_zip, repository)

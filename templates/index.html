@@ -698,13 +698,7 @@
                         </div>
                         <span class="service-badge active">Active</span>
                     </div>
-                    <div class="service-card" id="service-rag-okf" data-service="rag-okf">
-                        <div class="service-info">
-                            <div class="service-title">RAG + OKF Hybrid</div>
-                            <div class="service-desc">Combines OKF concept mapping with RAG vector database chunks.</div>
-                        </div>
-                        <span class="service-badge hybrid">Hybrid</span>
-                    </div>
+
                 </div>
 
                 <div class="drop-zone" id="drop-zone">
@@ -862,8 +856,6 @@
                     btnText.textContent = 'Extract to OKF';
                 } else if (selectedService === 'rag') {
                     btnText.textContent = 'Index for RAG';
-                } else if (selectedService === 'rag-okf') {
-                    btnText.textContent = 'Extract & Index';
                 }
             });
         });
@@ -1277,7 +1269,7 @@
 
                 const mode = json.mode || selectedService;
 
-                if (mode === 'rag' || mode === 'rag-okf') {
+                if (mode === 'rag') {
                     // Store RAG session
                     ragSessionId = json.session_id;
                     
@@ -1292,11 +1284,6 @@
                         uploadView.style.display = 'none';
                         ragWorkspace.style.display = 'flex';
                         ragInput.focus();
-
-                        // If hybrid mode with OKF, store download data
-                        if (mode === 'rag-okf' && json.zip_base64) {
-                            // Could add download button in RAG header later
-                        }
                     }, 800);
 
                 } else {
