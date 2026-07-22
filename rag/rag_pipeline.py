@@ -136,17 +136,25 @@ class RAGPipeline:
         
         user_content = f"Context:\n{context_str}\n\nQuestion: {question}"
         
-        # Call Gemini
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=[system_prompt, user_content],
-                config=types.GenerateContentConfig(temperature=0.0)
-            )
-            answer = response.text
-        except Exception as e:
-            logger.error(f"Gemini generation failed: {e}")
-            answer = "Sorry, an error occurred while generating the answer."
+        # Call Gemini with retry logic
+        answer = "Sorry, an error occurred while generating the answer."
+        max_retries = int(os.getenv("GEMINI_MAX_RETRIES", "3"))
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=user_content,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=0.0
+                    )
+                )
+                answer = response.text
+                break
+            except Exception as e:
+                logger.warning(f"Gemini generation attempt {attempt}/{max_retries} failed: {e}")
+                if attempt < max_retries:
+                    time.sleep(2 ** attempt)
 
         latency_ms = int((time.time() - query_start) * 1000)
 

@@ -14,7 +14,6 @@ python-dotenv>=1.0.0
 # YAML
 PyYAML>=6.0
 
-# RAG Pipeline
-chromadb>=0.4.0
+# Lightweight Serverless RAG
 rank-bm25>=0.2.2
-flashrank>=0.2.0
+numpy>=1.24.0
