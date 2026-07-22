@@ -176,6 +176,8 @@ class ChromaDBStore:
 
     def create_collection(self, session_id: str):
         self.session_id = session_id
+        self.chunks = []
+        self.embeddings = []
         safe_session_id = "".join([c for c in session_id if c.isalnum() or c in "_-"])
         collection_name = f"session_{safe_session_id}"
         try:
@@ -201,6 +203,8 @@ class ChromaDBStore:
         texts = [c["text"] for c in chunks]
         metadatas = [c["metadata"] for c in chunks]
         embeddings = self._embed(texts)
+        self.chunks = chunks
+        self.embeddings = embeddings
         self.collection_obj.add(ids=ids, documents=texts, metadatas=metadatas, embeddings=embeddings)
 
     def search(self, query: str, n_results: int = 20) -> List[Dict[str, Any]]:

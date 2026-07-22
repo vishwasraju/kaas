@@ -177,7 +177,27 @@ class RAGPipeline:
         items = []
         chunks = getattr(store, "chunks", [])
         embeddings = getattr(store, "embeddings", [])
-        
+
+        if not chunks and hasattr(store, "collection_obj") and store.collection_obj:
+            try:
+                data = store.collection_obj.get(include=["documents", "metadatas", "embeddings"])
+                if data and data.get("ids"):
+                    for i in range(len(data["ids"])):
+                        items.append({
+                            "id": data["ids"][i],
+                            "text": data["documents"][i] if data.get("documents") else "",
+                            "metadata": data["metadatas"][i] if data.get("metadatas") else {},
+                            "embedding": data["embeddings"][i] if data.get("embeddings") is not None else []
+                        })
+                    return {
+                        "session_id": self.session_id,
+                        "total_chunks": len(items),
+                        "embedding_model": "models/gemini-embedding-001",
+                        "items": items
+                    }
+            except Exception as e:
+                logger.error(f"Failed to export ChromaDB collection: {e}")
+
         for idx, chunk in enumerate(chunks):
             emb = embeddings[idx] if idx < len(embeddings) else []
             items.append({
