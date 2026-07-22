@@ -170,5 +170,29 @@ class RAGPipeline:
             }
         }
 
+    def export_vector_db_data(self) -> dict:
+        """Export chunks, metadata, and pre-computed embeddings as a JSON-serializable dict."""
+        store = self.vector_store._impl
+        
+        items = []
+        chunks = getattr(store, "chunks", [])
+        embeddings = getattr(store, "embeddings", [])
+        
+        for idx, chunk in enumerate(chunks):
+            emb = embeddings[idx] if idx < len(embeddings) else []
+            items.append({
+                "id": chunk.get("id", f"chunk_{idx}"),
+                "text": chunk.get("text", ""),
+                "metadata": chunk.get("metadata", {}),
+                "embedding": emb
+            })
+            
+        return {
+            "session_id": self.session_id,
+            "total_chunks": len(items),
+            "embedding_model": "models/gemini-embedding-001",
+            "items": items
+        }
+
 # Global dictionary to store RAG sessions
 _sessions: Dict[str, RAGPipeline] = {}

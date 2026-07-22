@@ -90,12 +90,17 @@ def upload_pdf(pdf: UploadFile = File(...), mode: str = Form("okf")):
         result = process_pdf(file_path, mode=mode)
         
         if mode == "rag":
-            _, document, session_id = result
+            zip_path, document, session_id = result
+            import base64
+            with open(zip_path, "rb") as f:
+                zip_bytes = f.read()
+            zip_base64 = base64.b64encode(zip_bytes).decode("utf-8")
             return {
                 "success": True,
                 "mode": "rag",
                 "session_id": session_id,
                 "document_title": document.filename,
+                "zip_base64": zip_base64,
                 "chunk_count": _sessions[session_id].vector_store.collection.count() if _sessions.get(session_id) and _sessions[session_id].vector_store.collection else 0
             }
             

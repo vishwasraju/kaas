@@ -83,7 +83,8 @@ def process_pdf(pdf_path: str, mode: str = "okf") -> tuple:
         rag_pipeline = RAGPipeline()
         _timed("Step 3 (RAG): Indexing Document", rag_pipeline.index_document, document, session_id)
         _sessions[session_id] = rag_pipeline
-        return None, document, session_id
+        zip_path = _timed("Step 4 (RAG): Writing ZIP archive with Vector DB", write_zip, None, None, rag_pipeline)
+        return zip_path, document, session_id
 
     # Step 3: AI analyzes document structure
     analysis = _timed(
@@ -118,18 +119,19 @@ def process_pdf(pdf_path: str, mode: str = "okf") -> tuple:
             f"{result['duplicates']} duplicate paragraphs. Continuing to package bundle."
         )
 
+    if mode == "rag-okf":
+        session_id = str(uuid.uuid4())
+        rag_pipeline = RAGPipeline()
+        _timed("Step 6 (RAG): Indexing Repository", rag_pipeline.index_repository, repository, document, session_id)
+        _sessions[session_id] = rag_pipeline
+        zip_path = _timed("Step 7: Writing ZIP archive with OKF & Vector DB", write_zip, repository, None, rag_pipeline)
+        return zip_path, repository, session_id
+
     # Step 6: Write ZIP archive
     zip_path = _timed("Step 6: Writing ZIP archive", write_zip, repository)
     logger.info(f"  ZIP created at {zip_path}")
 
     total_elapsed = time.time() - total_start
     logger.info(f"Pipeline completed in {total_elapsed:.2f}s")
-    
-    if mode == "rag-okf":
-        session_id = str(uuid.uuid4())
-        rag_pipeline = RAGPipeline()
-        _timed("Step 7 (RAG): Indexing Repository", rag_pipeline.index_repository, repository, document, session_id)
-        _sessions[session_id] = rag_pipeline
-        return zip_path, repository, session_id
 
     return zip_path, repository

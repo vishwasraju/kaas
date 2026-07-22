@@ -213,14 +213,138 @@ def write_repository(repository: Repository, output_dir: str = "output"):
             f.write(build_concept_file(okf))
 
 
-def write_zip(repository: Repository, output_dir: str = None) -> str:
+QUERY_RAG_SCRIPT = '''"""
+Standalone RAG Retrieval & Q&A Script
+Loads 'vector_db.json' and allows offline vector search and Q&A.
+
+Usage:
+    python query_rag.py "Your question here"
+"""
+
+import sys
+import os
+import json
+import math
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def cosine_similarity(v1, v2):
+    dot = sum(a * b for a, b in zip(v1, v2))
+    norm1 = math.sqrt(sum(a * a for a in v1))
+    norm2 = math.sqrt(sum(b * b for b in v2))
+    return dot / (norm1 * norm2) if norm1 * norm2 != 0 else 0.0
+
+class OfflineRAG:
+    def __init__(self, db_path="vector_db.json"):
+        if not os.path.exists(db_path):
+            raise FileNotFoundError(f"Database file '{db_path}' not found.")
+        with open(db_path, "r", encoding="utf-8") as f:
+            self.db = json.load(f)
+        self.items = self.db.get("items", [])
+        self.model = self.db.get("embedding_model", "models/gemini-embedding-001")
+        
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            print("⚠️ Warning: GEMINI_API_KEY not found in environment.")
+            self.client = None
+        else:
+            from google import genai
+            self.client = genai.Client(api_key=api_key)
+
+    def search(self, question, top_k=3):
+        if not self.client:
+            raise ValueError("GEMINI_API_KEY is required to convert query into vector.")
+        res = self.client.models.embed_content(model=self.model, contents=[question])
+        q_emb = res.embeddings[0].values
+        
+        scored = []
+        for item in self.items:
+            sim = cosine_similarity(q_emb, item["embedding"])
+            scored.append({
+                "similarity_score": round(sim, 4),
+                "text": item["text"],
+                "metadata": item["metadata"]
+            })
+        scored.sort(key=lambda x: x["similarity_score"], reverse=True)
+        return scored[:top_k]
+
+    def answer(self, question):
+        results = self.search(question, top_k=3)
+        if not results:
+            return "No matching context found.", []
+            
+        context = "\\n\\n".join([
+            f"--- Source {i+1} (Page {r['metadata'].get('page_number', 'N/A')}) ---\\n{r['text']}"
+            for i, r in enumerate(results)
+        ])
+        
+        prompt = f"Context:\\n{context}\\n\\nQuestion: {question}\\n\\nAnswer based strictly on context:"
+        
+        from google.genai import types
+        res = self.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction="You are a helpful assistant answering questions based strictly on context.",
+                temperature=0.0
+            )
+        )
+        return res.text, results
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python query_rag.py \\"Your question here\\"")
+        sys.exit(1)
+        
+    question = sys.argv[1]
+    print(f"\\n🔍 Searching vector_db.json for: '{question}'\\n")
+    
+    rag = OfflineRAG()
+    answer, sources = rag.answer(question)
+    
+    print("🤖 Answer:\\n", answer)
+    print("\\n📌 Sources:")
+    for i, s in enumerate(sources, 1):
+        print(f"[{i}] Page {s['metadata'].get('page_number', 'N/A')} (Score: {s['similarity_score']}): {s['text'][:120]}...")
+'''
+
+RAG_README_CONTENT = '''# Offline Vector RAG Package
+
+This ZIP archive contains your converted document, the exported Vector Database (`vector_db.json`), and standalone Python code for querying it.
+
+## Quick Start
+
+1. Install requirements:
+   ```bash
+   pip install google-genai python-dotenv
+   ```
+
+2. Set your Gemini API key in your terminal or `.env` file:
+   ```bash
+   export GEMINI_API_KEY="your_gemini_api_key_here"
+   ```
+
+3. Run the query script:
+   ```bash
+   python query_rag.py "What is the main topic of this document?"
+   ```
+
+## Package Contents
+- `vector_db.json`: Portable vector database containing chunks, page metadata, and pre-computed Gemini vector embeddings.
+- `query_rag.py`: Standalone Python script to convert queries to vectors, search `vector_db.json`, and synthesize answers.
+- `index.md` & concept `.md` files: OKF knowledge modules.
+'''
+
+
+def write_zip(repository: Repository = None, output_dir: str = None, rag_pipeline=None) -> str:
     """
-    Write the OKF bundle into a ZIP archive.
+    Write the OKF bundle and/or RAG Vector Database into a ZIP archive.
 
     Args:
-        repository: The OKF Repository object.
+        repository: Optional OKF Repository object.
         output_dir: Directory to write output.zip to.
-                    Defaults to a temporary directory.
+        rag_pipeline: Optional RAGPipeline object containing vector embeddings.
 
     Returns:
         Absolute path to the generated output.zip.
@@ -235,37 +359,46 @@ def write_zip(repository: Repository, output_dir: str = None) -> str:
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
 
-        # Write root index.md (§6)
-        zf.writestr("index.md", build_index_file(repository))
+        if repository:
+            # Write root index.md (§6)
+            zf.writestr("index.md", build_index_file(repository))
 
-        # Write root log.md (§7)
-        zf.writestr("log.md", build_log_file(repository))
+            # Write root log.md (§7)
+            zf.writestr("log.md", build_log_file(repository))
 
-        # Write root interactive graph visualizer
-        zf.writestr("visualize_graph.html", build_graph_html(repository))
+            # Write root interactive graph visualizer
+            zf.writestr("visualize_graph.html", build_graph_html(repository))
 
-        # Group files by directory for subdirectory indexes
-        groups = {}
-        for f in repository.files:
-            parts = f.path.split("/")
-            if len(parts) > 1:
-                group_dir = parts[0]
-                group_name = group_dir.replace("-", " ").title()
-                groups.setdefault((group_dir, group_name), []).append(f)
+            # Group files by directory for subdirectory indexes
+            groups = {}
+            for f in repository.files:
+                parts = f.path.split("/")
+                if len(parts) > 1:
+                    group_dir = parts[0]
+                    group_name = group_dir.replace("-", " ").title()
+                    groups.setdefault((group_dir, group_name), []).append(f)
 
-        # Write subdirectory index.md files (§6)
-        for (group_dir, group_name), files in groups.items():
-            zf.writestr(
-                f"{group_dir}/index.md",
-                build_subdir_index(group_name, files),
-            )
+            # Write subdirectory index.md files (§6)
+            for (group_dir, group_name), files in groups.items():
+                zf.writestr(
+                    f"{group_dir}/index.md",
+                    build_subdir_index(group_name, files),
+                )
 
-        # Write each concept file (§4)
-        for okf in repository.files:
-            zf.writestr(
-                okf.path,
-                build_concept_file(okf),
-            )
+            # Write each concept file (§4)
+            for okf in repository.files:
+                zf.writestr(
+                    okf.path,
+                    build_concept_file(okf),
+                )
+
+        # Include RAG vector database & query code if rag_pipeline provided
+        if rag_pipeline:
+            import json
+            vector_db_data = rag_pipeline.export_vector_db_data()
+            zf.writestr("vector_db.json", json.dumps(vector_db_data, indent=2))
+            zf.writestr("query_rag.py", QUERY_RAG_SCRIPT)
+            zf.writestr("RAG_README.md", RAG_README_CONTENT)
 
     return zip_path
 

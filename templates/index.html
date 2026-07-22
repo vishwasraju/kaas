@@ -780,6 +780,14 @@
             </div>
             <div class="rag-header-right">
                 <span class="rag-stats-badge" id="rag-chunk-count">0 chunks indexed</span>
+                <button class="btn-rag-back" id="btn-rag-download" style="background:var(--accent);border-color:var(--accent);color:#fff;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download Vector DB
+                </button>
                 <button class="btn-rag-back" id="btn-rag-back">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/>
@@ -951,6 +959,33 @@
             URL.revokeObjectURL(url);
             showToast('Download started successfully!', false);
         });
+
+        const btnRagDownload = document.getElementById('btn-rag-download');
+        if (btnRagDownload) {
+            btnRagDownload.addEventListener('click', () => {
+                if (!activeWorkspaceData || !activeWorkspaceData.zip_base64) {
+                    showToast('No downloadable ZIP package available for this session.', true);
+                    return;
+                }
+                
+                const zipBytes = atob(activeWorkspaceData.zip_base64);
+                const array = new Uint8Array(zipBytes.length);
+                for (let i = 0; i < zipBytes.length; i++) {
+                    array[i] = zipBytes.charCodeAt(i);
+                }
+                
+                const blob = new Blob([array], { type: 'application/zip' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'vector_db_package.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Vector DB package download started!', false);
+            });
+        }
 
         // New Upload View Transition (from OKF success)
         btnBack.addEventListener('click', () => {
