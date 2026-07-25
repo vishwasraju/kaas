@@ -101,7 +101,7 @@ def upload_pdf(pdf: UploadFile = File(...), mode: str = Form("okf")):
                 "session_id": session_id,
                 "document_title": document.filename,
                 "zip_base64": zip_base64,
-                "chunk_count": _sessions[session_id].vector_store.collection.count() if _sessions.get(session_id) and _sessions[session_id].vector_store.collection else 0
+                "chunk_count": _sessions[session_id].vector_store.count() if _sessions.get(session_id) else 0
             }
             
         zip_path, repository = result

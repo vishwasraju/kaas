@@ -133,12 +133,13 @@ class RAGPipeline:
 
     def export_vector_db_data(self) -> dict:
         """Export chunks, metadata, and pre-computed embeddings as a JSON-serializable dict."""
-        store = self.vector_store._impl
-        
+        store = self.vector_store
+
         items = []
         chunks = getattr(store, "chunks", [])
         embeddings = getattr(store, "embeddings", [])
 
+        # Fallback: read directly from ChromaDB collection if in-memory cache is empty
         if not chunks and hasattr(store, "collection_obj") and store.collection_obj:
             try:
                 data = store.collection_obj.get(include=["documents", "metadatas", "embeddings"])
@@ -167,7 +168,7 @@ class RAGPipeline:
                 "metadata": chunk.get("metadata", {}),
                 "embedding": emb
             })
-            
+
         return {
             "session_id": self.session_id,
             "total_chunks": len(items),

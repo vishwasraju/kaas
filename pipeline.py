@@ -2,7 +2,7 @@
 Central pipeline orchestrator for PDF-to-OKF extraction.
 
 Chains all processing stages:
-    1. Extract raw text from PDF (PyMuPDF)
+    1. Extract raw text from PDF (Docling)
     2. Canonicalize text (Unicode, whitespace, line endings)
     3. AI analyzes document structure (Gemini)
     4. Generate OKF repository with directory hierarchy

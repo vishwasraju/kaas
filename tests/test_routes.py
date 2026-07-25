@@ -39,17 +39,30 @@ def _make_mock_repo():
 
 def _create_pdf_bytes():
     """Create minimal valid PDF bytes for upload testing."""
-    try:
-        import fitz
-        doc = fitz.open()
-        page = doc.new_page()
-        page.insert_text((72, 72), "Test content for extraction.", fontsize=11)
-        buf = doc.tobytes()
-        doc.close()
-        return buf
-    except ImportError:
-        # Fallback: minimal PDF structure
-        return b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n206\n%%EOF"
+    # Minimal valid PDF with text content
+    stream_content = "BT /F1 11 Tf 72 720 Td (Test content for extraction.) Tj ET"
+    stream_bytes = stream_content.encode("latin-1")
+    stream_length = len(stream_bytes)
+
+    pdf_content = (
+        b"%PDF-1.4\n"
+        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+        b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R"
+        b"/Contents 4 0 R/Resources<</Font<</F1<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>>>>>>>endobj\n"
+        + f"4 0 obj<</Length {stream_length}>>stream\n".encode("latin-1")
+        + stream_bytes
+        + b"\nendstream\nendobj\n"
+        + b"xref\n0 5\n"
+        + b"0000000000 65535 f \n"
+        + b"0000000009 00000 n \n"
+        + b"0000000058 00000 n \n"
+        + b"0000000115 00000 n \n"
+        + b"0000000306 00000 n \n"
+        + b"trailer<</Size 5/Root 1 0 R>>\n"
+        + b"startxref\n400\n%%EOF"
+    )
+    return pdf_content
 
 
 class TestHomeRoute:

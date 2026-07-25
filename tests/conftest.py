@@ -146,48 +146,71 @@ def sample_repository(sample_okf_file, sample_okf_file_2):
 
 
 # ---------------------------------------------------------------------------
-# PDF fixture
+# PDF fixture (uses reportlab for lightweight PDF creation, no PyMuPDF)
 # ---------------------------------------------------------------------------
+
+def _create_simple_pdf(path, text=""):
+    """Create a simple valid PDF file with optional text using raw PDF commands."""
+    # Minimal valid PDF with text
+    if text:
+        # Encode text content into a simple PDF
+        stream_content = f"BT /F1 11 Tf 72 720 Td ({text}) Tj ET"
+        stream_bytes = stream_content.encode("latin-1")
+        stream_length = len(stream_bytes)
+
+        pdf_content = (
+            b"%PDF-1.4\n"
+            b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R"
+            b"/Contents 4 0 R/Resources<</Font<</F1<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>>>>>>>endobj\n"
+            + f"4 0 obj<</Length {stream_length}>>stream\n".encode("latin-1")
+            + stream_bytes
+            + b"\nendstream\nendobj\n"
+            + b"xref\n0 5\n"
+            + b"0000000000 65535 f \n"
+            + b"0000000009 00000 n \n"
+            + b"0000000058 00000 n \n"
+            + b"0000000115 00000 n \n"
+            + b"0000000306 00000 n \n"
+            + b"trailer<</Size 5/Root 1 0 R>>\n"
+            + b"startxref\n400\n%%EOF"
+        )
+    else:
+        # Blank page PDF
+        pdf_content = (
+            b"%PDF-1.4\n"
+            b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n"
+            b"xref\n0 4\n"
+            b"0000000000 65535 f \n"
+            b"0000000009 00000 n \n"
+            b"0000000058 00000 n \n"
+            b"0000000115 00000 n \n"
+            b"trailer<</Size 4/Root 1 0 R>>\n"
+            b"startxref\n206\n%%EOF"
+        )
+    with open(path, "wb") as f:
+        f.write(pdf_content)
+
 
 @pytest.fixture
 def sample_pdf_path(tmp_path):
-    """Create a minimal valid PDF using PyMuPDF and return its path."""
-    try:
-        import fitz  # PyMuPDF
-    except ImportError:
-        pytest.skip("PyMuPDF (fitz) not installed")
-
+    """Create a minimal valid PDF with text content and return its path."""
     pdf_path = tmp_path / "test_document.pdf"
-    doc = fitz.open()
-    page = doc.new_page()
-    page.insert_text(
-        (72, 72),
-        (
-            "Software testing is the process of evaluating a system.\n"
-            "It involves executing components to find defects.\n"
-            "Unit testing validates individual functions in isolation.\n"
-            "Integration testing checks module interactions."
-        ),
-        fontsize=11,
+    _create_simple_pdf(
+        str(pdf_path),
+        text="Software testing is the process of evaluating a system."
     )
-    doc.save(str(pdf_path))
-    doc.close()
     return str(pdf_path)
 
 
 @pytest.fixture
 def empty_pdf_path(tmp_path):
     """Create a PDF with no text content (blank page)."""
-    try:
-        import fitz
-    except ImportError:
-        pytest.skip("PyMuPDF (fitz) not installed")
-
     pdf_path = tmp_path / "empty.pdf"
-    doc = fitz.open()
-    doc.new_page()  # blank page, no text
-    doc.save(str(pdf_path))
-    doc.close()
+    _create_simple_pdf(str(pdf_path), text="")
     return str(pdf_path)
 
 

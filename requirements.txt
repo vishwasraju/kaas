@@ -4,8 +4,8 @@ uvicorn>=0.23.0
 python-multipart>=0.0.6
 jinja2>=3.1.0
 
-# PDF extraction
-PyMuPDF>=1.23.0
+# PDF extraction (Docling - AI document parsing by IBM)
+docling>=2.70.0
 
 # AI (Gemini)
 google-genai>=1.0.0
@@ -14,6 +14,7 @@ python-dotenv>=1.0.0
 # YAML
 PyYAML>=6.0
 
-# Lightweight Serverless RAG
+# RAG
 rank-bm25>=0.2.2
 numpy>=1.24.0
+chromadb>=0.4.0
