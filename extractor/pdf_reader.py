@@ -6,9 +6,6 @@ from models.document import Document
 from models.page import Page
 from models.paragraph import Paragraph
 
-from docling.document_converter import DocumentConverter
-from docling.datamodel.document import DoclingDocument
-
 logger = logging.getLogger(__name__)
 
 def read_pdf(pdf_path: str) -> Document:
@@ -23,6 +20,11 @@ def read_pdf(pdf_path: str) -> Document:
     """
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+    try:
+        from docling.document_converter import DocumentConverter
+    except ImportError as e:
+        raise RuntimeError("Docling package is not installed. Please install 'docling'.") from e
 
     try:
         converter = DocumentConverter()
@@ -51,9 +53,9 @@ def read_pdf(pdf_path: str) -> Document:
                 page_no = prov.page_no
                 if page_no not in page_texts:
                     continue  # Safety check for unexpected page numbers
-                
+
                 item_type = type(item).__name__
-                
+
                 if item_type == "TableItem":
                     md_table = item.export_to_markdown() if hasattr(item, 'export_to_markdown') else ""
                     # Store as markdown representation for tables

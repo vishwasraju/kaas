@@ -13,7 +13,6 @@ Chains all processing stages:
 
 import logging
 import time
-import uuid
 
 from extractor.pdf_reader import read_pdf
 from canonicalizer.pipeline import canonicalize
@@ -23,7 +22,6 @@ from generator.generator import generate_repository
 from validator.validator import validate
 from writer.writer import write_zip
 from tester.repository_checker import check_repository
-from rag.rag_pipeline import RAGPipeline, _sessions
 
 logger = logging.getLogger(__name__)
 
@@ -55,17 +53,15 @@ def _timed(step_name: str, func, *args, **kwargs):
         raise PipelineError(step_name, str(e), cause=e) from e
 
 
-def process_pdf(pdf_path: str, mode: str = "okf") -> tuple:
+def process_pdf(pdf_path: str) -> tuple:
     """
     Full extraction pipeline.
 
     Args:
         pdf_path: Path to the uploaded PDF file.
-        mode: "okf" or "rag"
 
     Returns:
-        For mode="okf": (zip_path, repository)
-        For mode="rag": (zip_path, document, session_id)
+        (zip_path, repository)
     """
 
     total_start = time.time()
@@ -76,14 +72,6 @@ def process_pdf(pdf_path: str, mode: str = "okf") -> tuple:
 
     # Step 2: Canonicalize text
     document = _timed("Step 2: Canonicalizing text", canonicalize, document)
-
-    if mode == "rag":
-        session_id = str(uuid.uuid4())
-        rag_pipeline = RAGPipeline()
-        _timed("Step 3 (RAG): Indexing Document", rag_pipeline.index_document, document, session_id)
-        _sessions[session_id] = rag_pipeline
-        zip_path = _timed("Step 4 (RAG): Writing ZIP archive with Vector DB", write_zip, None, None, rag_pipeline)
-        return zip_path, document, session_id
 
     # Step 3: AI analyzes document structure
     analysis = _timed(
