@@ -87,7 +87,8 @@ def read_pdf(pdf_path: str) -> Document:
         result = converter.convert(pdf_path)
         docling_doc = result.document
     except Exception as e:
-        raise ValueError(f"Failed to read PDF {os.path.basename(pdf_path)}. It may be encrypted or corrupted: {str(e)}")
+        logger.warning(f"Docling conversion encountered issue ({e}). Using ultra-lightweight pypdfium fallback...")
+        return _read_pdf_pypdfium(pdf_path)
 
     if not hasattr(docling_doc, 'pages') or len(docling_doc.pages) == 0:
          raise ValueError(f"PDF has no pages: {os.path.basename(pdf_path)}")
@@ -269,4 +270,69 @@ def read_pdf(pdf_path: str) -> Document:
     # Export full document directly to markdown as the raw text
     document.raw_text = docling_doc.export_to_markdown()
 
+    return document
+
+
+def _read_pdf_pypdfium(pdf_path: str) -> Document:
+    """
+    Bulletproof fallback PDF reader using pypdfium2 (uses < 10MB RAM).
+    Extracts text, paragraphs, and page chunks instantly.
+    """
+    import pypdfium2 as pdfium
+    pdf = pdfium.PdfDocument(pdf_path)
+    num_pages = len(pdf)
+
+    page_texts: Dict[int, List[str]] = {i: [] for i in range(1, num_pages + 1)}
+    page_paragraphs: Dict[int, List[Paragraph]] = {i: [] for i in range(1, num_pages + 1)}
+    chunks: List[DoclingChunk] = []
+    chunk_id = 1
+
+    for page_idx in range(num_pages):
+        page_num = page_idx + 1
+        page = pdf[page_idx]
+        text_page = page.get_textpage()
+        page_text = text_page.get_text_range().strip()
+
+        paragraphs = []
+        if page_text:
+            lines = [line.strip() for line in page_text.splitlines() if line.strip()]
+            for p_i, line in enumerate(lines, 1):
+                paragraphs.append(Paragraph(index=p_i, text=line, section_heading=f"Page {page_num}"))
+
+            chunks.append(DoclingChunk(
+                chunk_id=chunk_id,
+                heading=f"Page {page_num}",
+                content=page_text,
+                chunk_type="text",
+                suggested_type="Section",
+                page_start=page_num,
+                page_end=page_num,
+                paragraph_indices=[p.index for p in paragraphs]
+            ))
+            chunk_id += 1
+
+            page_texts[page_num] = [page_text]
+        page_paragraphs[page_num] = paragraphs
+
+    document = Document(
+        filename=os.path.basename(pdf_path),
+        filepath=os.path.abspath(pdf_path),
+        page_count=num_pages,
+        metadata={},
+    )
+    document.chunks = chunks
+
+    for p_num in range(1, num_pages + 1):
+        raw_text = "\n".join(page_texts.get(p_num, []))
+        page = Page(
+            page_number=p_num,
+            raw_text=raw_text,
+            paragraphs=page_paragraphs.get(p_num, []),
+            tables=[],
+            links=[],
+            has_images=False
+        )
+        document.pages.append(page)
+
+    document.raw_text = "\n\n".join("\n".join(page_texts.get(i, [])) for i in range(1, num_pages + 1))
     return document
