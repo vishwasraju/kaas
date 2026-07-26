@@ -5,3 +5,4 @@ from dataclasses import dataclass
 class Paragraph:
     index: int
     text: str
+    section_heading: str = ""

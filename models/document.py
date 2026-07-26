@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 from models.page import Page
+from models.chunk import DoclingChunk
 
 
 @dataclass
@@ -17,6 +18,9 @@ class Document:
     metadata: Dict = field(default_factory=dict)
 
     pages: List[Page] = field(default_factory=list)
+
+    # Structural chunks from Docling (section-level groupings)
+    chunks: List[DoclingChunk] = field(default_factory=list)
 
     raw_text: str = ""
 

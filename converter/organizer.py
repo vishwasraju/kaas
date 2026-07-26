@@ -30,7 +30,7 @@ def _get_client():
         if not api_key:
             raise EnvironmentError(
                 "GEMINI_API_KEY environment variable is not set. "
-                "Please configure GEMINI_API_KEY in your Vercel Project Environment Variables."
+                "Please configure GEMINI_API_KEY in your .env file."
             )
         client = genai.Client(api_key=api_key)
     return client
@@ -42,17 +42,16 @@ MAX_RETRIES = int(os.getenv("GEMINI_MAX_RETRIES", "3"))
 _NON_RETRYABLE = (ValueError, TypeError, KeyError)
 
 
-def _slice_document(document: Document, start_idx: int, end_idx: int) -> Document:
-    """Creates a lightweight sub-Document slice for a subset of pages [start_idx, end_idx)."""
-    sliced_pages = document.pages[start_idx:end_idx]
+def _slice_document(document: Document, chunk_start_idx: int, chunk_end_idx: int) -> Document:
+    """Creates a lightweight sub-Document slice for a subset of chunks [chunk_start_idx, chunk_end_idx)."""
+    sliced_chunks = document.chunks[chunk_start_idx:chunk_end_idx]
     slice_doc = Document(
         filename=document.filename,
         filepath=document.filepath,
-        page_count=len(sliced_pages),
+        page_count=document.page_count,
         metadata=document.metadata,
     )
-    slice_doc.pages = sliced_pages
-    slice_doc.raw_text = "\n".join(p.raw_text for p in sliced_pages)
+    slice_doc.chunks = sliced_chunks
     return slice_doc
 
 
@@ -133,10 +132,13 @@ def _merge_chunk_analyses(chunk_analyses: list[dict]) -> dict:
             same_title = unit.get("title") and unit.get("title").strip().lower() == last_unit.get("title", "").strip().lower()
 
             if same_title:
-                # Boundary Stitching: append segments and update end_page
-                last_unit["segments"] = last_unit.get("segments", []) + unit.get("segments", [])
-                if "end_page" in unit:
-                    last_unit["end_page"] = max(last_unit.get("end_page", 0), unit["end_page"])
+                # Boundary Stitching: append chunk_ids
+                existing_chunks = set(last_unit.get("chunk_ids", []))
+                for cid in unit.get("chunk_ids", []):
+                    if cid not in existing_chunks:
+                        last_unit.setdefault("chunk_ids", []).append(cid)
+                        existing_chunks.add(cid)
+                
                 # Merge relationships
                 existing_rel_targets = {r.get("target") for r in last_unit.get("relationships", [])}
                 for rel in unit.get("relationships", []):
@@ -152,52 +154,53 @@ def _merge_chunk_analyses(chunk_analyses: list[dict]) -> dict:
 
 def analyze_document(document: Document) -> dict:
     """
-    Sends the document to Gemini with retry and page-chunking logic.
+    Sends the document to Gemini with retry and chunking logic.
 
-    If document page_count > GEMINI_BATCH_SIZE_PAGES, splits processing into
-    page-window chunks with configurable delay to respect Free Tier API rate limits.
+    If document chunk count > GEMINI_BATCH_SIZE_CHUNKS, splits processing into
+    chunk windows with configurable delay to respect API rate limits.
     """
-    batch_size = int(os.getenv("GEMINI_BATCH_SIZE_PAGES", "25"))
-    overlap = int(os.getenv("GEMINI_BATCH_OVERLAP_PAGES", "1"))
+    batch_size = int(os.getenv("GEMINI_BATCH_SIZE_CHUNKS", "30"))
+    overlap = int(os.getenv("GEMINI_BATCH_OVERLAP_CHUNKS", "1"))
     delay = float(os.getenv("GEMINI_BATCH_DELAY_SEC", "0.2"))
 
+    total_chunks = len(document.chunks)
 
     # Single-pass for documents within batch size
-    if document.page_count <= batch_size:
+    if total_chunks <= batch_size:
         return _analyze_single_doc(document)
 
     logger.info(
-        f"Document has {document.page_count} pages. "
+        f"Document has {total_chunks} chunks. "
         f"Enabling chunked processing (batch_size={batch_size}, overlap={overlap})."
     )
 
-    chunks = []
+    chunks_indices = []
     step = batch_size - overlap if batch_size > overlap else 1
     start_idx = 0
 
-    while start_idx < document.page_count:
-        end_idx = min(start_idx + batch_size, document.page_count)
-        chunks.append((start_idx, end_idx))
-        if end_idx == document.page_count:
+    while start_idx < total_chunks:
+        end_idx = min(start_idx + batch_size, total_chunks)
+        chunks_indices.append((start_idx, end_idx))
+        if end_idx == total_chunks:
             break
         start_idx += step
 
-    logger.info(f"Split document into {len(chunks)} processing chunks: {chunks}")
+    logger.info(f"Split document into {len(chunks_indices)} processing chunks: {chunks_indices}")
 
     chunk_analyses = []
-    for idx, (s, e) in enumerate(chunks, start=1):
-        logger.info(f"Processing chunk {idx}/{len(chunks)} (pages {s+1} to {e})...")
+    for idx, (s, e) in enumerate(chunks_indices, start=1):
+        logger.info(f"Processing chunk {idx}/{len(chunks_indices)} (chunks {s} to {e-1})...")
         slice_doc = _slice_document(document, s, e)
         chunk_res = _analyze_single_doc(slice_doc)
         chunk_analyses.append(chunk_res)
 
-        if idx < len(chunks) and delay > 0:
+        if idx < len(chunks_indices) and delay > 0:
             logger.info(f"Waiting {delay:.1f}s between API calls for rate-limit protection...")
             time.sleep(delay)
 
     merged_analysis = _merge_chunk_analyses(chunk_analyses)
     logger.info(
-        f"Successfully merged {len(chunk_analyses)} chunks into "
+        f"Successfully merged {len(chunk_analyses)} requests into "
         f"{len(merged_analysis.get('knowledge_units', []))} knowledge units."
     )
     return merged_analysis

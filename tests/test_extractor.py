@@ -12,6 +12,19 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+HAS_DOCLING = False
+try:
+    from docling.document_converter import DocumentConverter
+    HAS_DOCLING = True
+except Exception:
+    HAS_DOCLING = False
+
+pytestmark = pytest.mark.skipif(
+    not HAS_DOCLING,
+    reason="Docling or its system dependencies (libgl1, glib) are not installed in local environment (requires Docker/Linux)."
+)
+
+
 from extractor.pdf_reader import read_pdf
 
 

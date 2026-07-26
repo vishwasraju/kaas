@@ -45,31 +45,28 @@ class TestParser:
         """CVT-09: Reject unit missing title."""
         data = json.dumps({
             "knowledge_units": [{
-                "segments": [{"page": 1, "start_paragraph": 0, "end_paragraph": 0}],
-                "start_page": 1, "end_page": 1
+                "chunk_ids": [0]
             }]
         })
         with pytest.raises(ValueError, match="title"):
             parse_ai_response(data)
 
-    def test_cvt_09b_unit_missing_segments(self):
-        """CVT-09b: Reject unit missing segments."""
+    def test_cvt_09b_unit_missing_chunk_ids(self):
+        """CVT-09b: Reject unit missing chunk_ids."""
         data = json.dumps({
             "knowledge_units": [{
-                "title": "Test",
-                "start_page": 1, "end_page": 1
+                "title": "Test"
             }]
         })
-        with pytest.raises(ValueError, match="segments"):
+        with pytest.raises(ValueError, match="chunk_ids"):
             parse_ai_response(data)
 
-    def test_cvt_10_segment_fields_must_be_int(self):
-        """CVT-10: Validate segment fields are integers."""
+    def test_cvt_10_chunk_ids_must_be_int(self):
+        """CVT-10: Validate chunk_ids are integers."""
         data = json.dumps({
             "knowledge_units": [{
                 "title": "Test",
-                "segments": [{"page": "one", "start_paragraph": 0, "end_paragraph": 0}],
-                "start_page": 1, "end_page": 1
+                "chunk_ids": ["one", 2]
             }]
         })
         with pytest.raises(ValueError, match="integer"):
@@ -97,16 +94,14 @@ class TestDTO:
         assert result["page_count"] == 1
         assert "metadata" in result
 
-    def test_cvt_13_dto_includes_paragraphs(self, sample_document):
-        """CVT-13: DTO includes pages with paragraph index + text."""
+    def test_cvt_13_dto_includes_chunks(self, sample_document):
+        """CVT-13: DTO includes chunks with chunk_id + content."""
         result = document_to_dict(sample_document)
-        assert "pages" in result
-        assert len(result["pages"]) == 1
-        page = result["pages"][0]
-        assert "paragraphs" in page
-        assert len(page["paragraphs"]) == 4
-        assert page["paragraphs"][0]["index"] == 0
-        assert len(page["paragraphs"][0]["text"]) > 0
+        assert "chunks" in result
+        assert len(result["chunks"]) > 0
+        chunk = result["chunks"][0]
+        assert "chunk_id" in chunk
+        assert "content_preview" in chunk
 
 
 # ---- Deduplicator Tests (CVT-14 to CVT-17) ----
@@ -115,100 +110,82 @@ class TestDeduplicator:
     """Tests for converter/deduplicator.py."""
 
     def test_cvt_14_no_overlap(self):
-        """CVT-14: No-op when no overlapping paragraph assignments."""
+        """CVT-14: No-op when no overlapping chunk assignments."""
         analysis = {
             "knowledge_units": [
                 {
                     "title": "Unit A",
-                    "segments": [{"page": 1, "start_paragraph": 0, "end_paragraph": 1}],
-                    "start_page": 1, "end_page": 1
+                    "chunk_ids": [0, 1]
                 },
                 {
                     "title": "Unit B",
-                    "segments": [{"page": 1, "start_paragraph": 2, "end_paragraph": 3}],
-                    "start_page": 1, "end_page": 1
+                    "chunk_ids": [2, 3]
                 },
             ]
         }
         result = deduplicate_analysis(analysis)
         assert len(result["knowledge_units"]) == 2
-        # Segments should be unchanged
-        assert result["knowledge_units"][0]["segments"][0]["start_paragraph"] == 0
-        assert result["knowledge_units"][1]["segments"][0]["start_paragraph"] == 2
+        # chunk_ids should be unchanged
+        assert result["knowledge_units"][0]["chunk_ids"] == [0, 1]
+        assert result["knowledge_units"][1]["chunk_ids"] == [2, 3]
 
     def test_cvt_15_overlap_to_smallest(self):
-        """CVT-15: Overlapping paragraph assigned to smallest-count unit."""
+        """CVT-15: Overlapping chunk assigned to smallest-count unit."""
         analysis = {
             "knowledge_units": [
                 {
                     "title": "Big Unit",
-                    "segments": [{"page": 1, "start_paragraph": 0, "end_paragraph": 5}],
-                    "start_page": 1, "end_page": 1
+                    "chunk_ids": [0, 1, 2, 3, 4, 5]
                 },
                 {
                     "title": "Small Unit",
-                    "segments": [{"page": 1, "start_paragraph": 2, "end_paragraph": 3}],
-                    "start_page": 1, "end_page": 1
+                    "chunk_ids": [2, 3]
                 },
             ]
         }
         result = deduplicate_analysis(analysis)
-        # Small Unit (2 paragraphs) should keep paragraphs 2-3
+        # Small Unit (2 chunks) should keep chunks 2 and 3
         small = next(u for u in result["knowledge_units"] if u["title"] == "Small Unit")
-        small_paras = set()
-        for seg in small["segments"]:
-            for p in range(seg["start_paragraph"], seg["end_paragraph"] + 1):
-                small_paras.add(p)
-        assert 2 in small_paras
-        assert 3 in small_paras
+        assert 2 in small["chunk_ids"]
+        assert 3 in small["chunk_ids"]
 
     def test_cvt_16_empty_units_removed(self):
         """CVT-16: Empty units removed after deduplication."""
-        # Unit B claims the same paragraphs as Unit A but is larger
-        # After dedup, Unit B loses all paragraphs and should be removed
         analysis = {
             "knowledge_units": [
                 {
                     "title": "Unit A",
-                    "segments": [{"page": 1, "start_paragraph": 0, "end_paragraph": 0}],
-                    "start_page": 1, "end_page": 1
+                    "chunk_ids": [0]
                 },
                 {
                     "title": "Unit B",
-                    "segments": [{"page": 1, "start_paragraph": 0, "end_paragraph": 0}],
-                    "start_page": 1, "end_page": 1
+                    "chunk_ids": [0]
                 },
             ]
         }
         result = deduplicate_analysis(analysis)
-        # One unit should be removed (both claim para 0, one wins)
+        # One unit should be removed (both claim chunk 0, one wins)
         assert len(result["knowledge_units"]) == 1
 
-    def test_cvt_17_segments_rebuilt(self):
-        """CVT-17: Segments rebuilt correctly after reassignment."""
+    def test_cvt_17_chunk_ids_sorted(self):
+        """CVT-17: Chunk IDs are sorted after reassignment."""
         analysis = {
             "knowledge_units": [
                 {
                     "title": "Unit A",
-                    "segments": [{"page": 1, "start_paragraph": 0, "end_paragraph": 3}],
-                    "start_page": 1, "end_page": 1
+                    "chunk_ids": [0, 1, 2, 3]
                 },
                 {
                     "title": "Unit B",
-                    "segments": [{"page": 1, "start_paragraph": 1, "end_paragraph": 2}],
-                    "start_page": 1, "end_page": 1
+                    "chunk_ids": [1, 2]
                 },
             ]
         }
         result = deduplicate_analysis(analysis)
-        # All units should have valid segment structure
         for unit in result["knowledge_units"]:
-            for seg in unit["segments"]:
-                assert "page" in seg
-                assert "start_paragraph" in seg
-                assert "end_paragraph" in seg
-                assert isinstance(seg["page"], int)
-                assert seg["start_paragraph"] <= seg["end_paragraph"]
+            assert "chunk_ids" in unit
+            assert isinstance(unit["chunk_ids"], list)
+            assert unit["chunk_ids"] == sorted(unit["chunk_ids"])
 
 
 # ---- Organizer Tests (CVT-01 to CVT-05) ----
@@ -232,11 +209,7 @@ class TestOrganizer:
                 assert len(result["knowledge_units"]) == 2
 
     def test_cvt_02_missing_api_key(self):
-        """CVT-02: Missing GEMINI_API_KEY raises error at import time.
-        Note: The organizer module validates the API key at import time.
-        Since it's already imported, we test the environment check logic directly."""
-        # The module checks os.getenv("GEMINI_API_KEY") at import time
-        # We verify the key was set (our test env has it or the module loaded)
+        """CVT-02: Missing GEMINI_API_KEY raises error at import time."""
         assert True  # Module-level validation tested implicitly
 
     def test_cvt_03_retry_on_api_error(self, sample_document, mock_gemini_response_text):
@@ -282,32 +255,36 @@ class TestOrganizer:
                 assert config.response_mime_type == "application/json"
 
     def test_cvt_18_document_chunking_and_boundary_stitching(self, sample_document, mock_gemini_response_text):
-        """CVT-18: Multi-page document triggers page chunking and boundary stitching."""
-        # Create a document with 5 pages
+        """CVT-18: Multi-page document triggers chunk chunking and boundary stitching."""
         from models.document import Document
-        from models.page import Page
-        from models.paragraph import Paragraph
+        from models.chunk import DoclingChunk
 
+        # 5 chunks with batch_size=3, overlap=1 -> step=2 -> batches: (0,3), (2,5) = 2 calls
         multi_doc = Document(filename="multi.pdf", filepath="/tmp/multi.pdf", page_count=5, metadata={})
-        for page_num in range(1, 6):
-            p = Page(page_number=page_num, raw_text=f"Page {page_num} text")
-            p.paragraphs = [Paragraph(index=1, text=f"Page {page_num} P1")]
-            multi_doc.pages.append(p)
+        for i in range(5):
+            multi_doc.chunks.append(DoclingChunk(
+                chunk_id=i + 1,
+                heading=f"Heading {i}",
+                content=f"Content for chunk {i}",
+                chunk_type="text",
+                suggested_type="Section",
+                page_start=1,
+                page_end=5,
+                paragraph_indices=[i]
+            ))
 
         chunk1_response = json.dumps({
             "repository_title": "Multi Doc Repo",
             "knowledge_units": [
                 {
                     "title": "Intro Section",
-                    "start_page": 1,
-                    "end_page": 2,
-                    "segments": [{"page": 1, "start_paragraph": 1, "end_paragraph": 1}]
+                    "chunk_ids": [1, 2],
+                    "type": "Section"
                 },
                 {
                     "title": "Boundary Section",
-                    "start_page": 2,
-                    "end_page": 3,
-                    "segments": [{"page": 2, "start_paragraph": 1, "end_paragraph": 1}]
+                    "chunk_ids": [3],
+                    "type": "Section"
                 }
             ]
         })
@@ -317,15 +294,13 @@ class TestOrganizer:
             "knowledge_units": [
                 {
                     "title": "Boundary Section",
-                    "start_page": 3,
-                    "end_page": 4,
-                    "segments": [{"page": 3, "start_paragraph": 1, "end_paragraph": 1}]
+                    "chunk_ids": [4],
+                    "type": "Section"
                 },
                 {
                     "title": "Conclusion Section",
-                    "start_page": 4,
-                    "end_page": 5,
-                    "segments": [{"page": 5, "start_paragraph": 1, "end_paragraph": 1}]
+                    "chunk_ids": [5],
+                    "type": "Section"
                 }
             ]
         })
@@ -337,8 +312,8 @@ class TestOrganizer:
 
         with patch.dict(os.environ, {
             "GEMINI_API_KEY": "test-key",
-            "GEMINI_BATCH_SIZE_PAGES": "3",
-            "GEMINI_BATCH_OVERLAP_PAGES": "1",
+            "GEMINI_BATCH_SIZE_CHUNKS": "3",
+            "GEMINI_BATCH_OVERLAP_CHUNKS": "1",
             "GEMINI_BATCH_DELAY_SEC": "0.0"
         }):
             with patch("converter.organizer.client") as mock_client:
@@ -350,25 +325,22 @@ class TestOrganizer:
                 units = result["knowledge_units"]
                 assert len(units) == 3
                 boundary_unit = next(u for u in units if u["title"] == "Boundary Section")
-                assert len(boundary_unit["segments"]) == 2
-                assert boundary_unit["end_page"] == 4
+                assert len(boundary_unit["chunk_ids"]) == 2
 
     def test_cvt_19_slice_document_helper(self, sample_document):
         """CVT-19: _slice_document creates valid sub-document slice."""
         from converter.organizer import _slice_document
         sliced = _slice_document(sample_document, 0, 1)
         assert sliced.filename == sample_document.filename
-        assert sliced.page_count == 1
-        assert len(sliced.pages) == 1
+        assert len(sliced.chunks) == 1
 
     def test_cvt_20_merge_chunk_analyses(self):
         """CVT-20: _merge_chunk_analyses merges chunk dictionaries correctly."""
         from converter.organizer import _merge_chunk_analyses
         chunks = [
-            {"repository_title": "Repo", "knowledge_units": [{"title": "Part 1", "start_page": 1, "end_page": 2, "segments": []}]},
-            {"repository_title": "Repo", "knowledge_units": [{"title": "Part 2", "start_page": 3, "end_page": 4, "segments": []}]}
+            {"repository_title": "Repo", "knowledge_units": [{"title": "Part 1", "chunk_ids": [1], "type": "Section"}]},
+            {"repository_title": "Repo", "knowledge_units": [{"title": "Part 2", "chunk_ids": [2], "type": "Section"}]}
         ]
         merged = _merge_chunk_analyses(chunks)
         assert merged["repository_title"] == "Repo"
         assert len(merged["knowledge_units"]) == 2
-

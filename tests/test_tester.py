@@ -14,22 +14,35 @@ from tester.repository_checker import check_repository
 from models.document import Document
 from models.page import Page
 from models.paragraph import Paragraph
+from models.chunk import DoclingChunk
 from models.repository import Repository
 from models.okf_file import OKFFile
 
 
 def _make_doc_and_repo(doc_texts, repo_contents):
     """Helper: create a Document and Repository from text lists."""
-    paragraphs = [Paragraph(index=i, text=t) for i, t in enumerate(doc_texts)]
+    paragraphs = []
+    chunks = []
+    for i, t in enumerate(doc_texts):
+        paragraphs.append(Paragraph(index=i, text=t))
+        chunks.append(DoclingChunk(
+            chunk_id=i + 1,
+            heading="",
+            content=t,
+            chunk_type="text",
+            suggested_type="Section",
+            page_start=1,
+            page_end=1,
+            paragraph_indices=[i]
+        ))
     page = Page(
         page_number=1,
         raw_text="\n".join(doc_texts),
-        normalized_text="\n".join(doc_texts),
         paragraphs=paragraphs,
     )
     doc = Document(
         filename="test.pdf", filepath="/tmp/test.pdf",
-        page_count=1, pages=[page],
+        page_count=1, pages=[page], chunks=chunks
     )
     files = []
     for i, content in enumerate(repo_contents):
@@ -45,35 +58,32 @@ class TestRepositoryChecker:
     """Tests for tester/repository_checker.py."""
 
     def test_tst_01_full_coverage(self):
-        """TST-01: No missing/duplicate paragraphs when repository fully covers document."""
-        texts = ["Alpha paragraph.", "Beta paragraph."]
-        # OKF content joins paragraphs with double newline
-        doc, repo = _make_doc_and_repo(texts, ["Alpha paragraph.\n\nBeta paragraph."])
+        """TST-01: No missing/duplicate chunks when repository fully covers document."""
+        texts = ["Alpha content.", "Beta content."]
+        doc, repo = _make_doc_and_repo(texts, ["Alpha content.\n\nBeta content."])
         result = check_repository(doc, repo)
         assert result["missing"] == 0
         assert result["duplicates"] == 0
 
-    def test_tst_02_missing_paragraphs(self):
-        """TST-02: Detects missing paragraphs when some are not in any OKF file."""
-        texts = ["Alpha paragraph.", "Beta paragraph.", "Gamma paragraph."]
-        # Only include first paragraph in repo
-        doc, repo = _make_doc_and_repo(texts, ["Alpha paragraph."])
+    def test_tst_02_missing_chunks(self):
+        """TST-02: Detects missing chunks when some are not in any OKF file."""
+        texts = ["Alpha content.", "Beta content.", "Gamma content."]
+        doc, repo = _make_doc_and_repo(texts, ["Alpha content."])
         result = check_repository(doc, repo)
         assert result["missing"] == 2  # Beta and Gamma missing
 
-    def test_tst_03_duplicate_paragraphs(self):
-        """TST-03: Detects duplicate paragraphs when same content appears multiple times."""
-        texts = ["Alpha paragraph."]
-        # Same paragraph appears in two OKF files
+    def test_tst_03_duplicate_chunks(self):
+        """TST-03: Detects duplicate chunks when same content appears multiple times."""
+        texts = ["Alpha content."]
         doc, repo = _make_doc_and_repo(
             texts,
-            ["Alpha paragraph.", "Alpha paragraph."]
+            ["Alpha content.", "Alpha content."]
         )
         result = check_repository(doc, repo)
         assert result["duplicates"] == 1
 
     def test_tst_04_correct_counts(self):
-        """TST-04: Returns correct counts (original, generated, missing, duplicates)."""
+        """TST-04: Returns correct counts."""
         texts = ["One.", "Two.", "Three."]
         doc, repo = _make_doc_and_repo(texts, ["One.\n\nTwo."])
         result = check_repository(doc, repo)
@@ -81,4 +91,5 @@ class TestRepositoryChecker:
         assert result["generated"] == 2
         assert result["missing"] == 1
         assert result["duplicates"] == 0
-        assert set(result.keys()) == {"original", "generated", "missing", "duplicates"}
+        assert result["total_chunks"] == 3
+        assert set(result.keys()) == {"original", "generated", "missing", "duplicates", "total_chunks"}

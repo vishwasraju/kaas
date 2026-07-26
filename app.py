@@ -33,6 +33,6 @@ app.include_router(upload_router)
 
 
 @app.get("/health")
-def health_check():
+def health_check() -> dict[str, str]:
     """Health check endpoint for monitoring."""
     return {"status": "healthy"}

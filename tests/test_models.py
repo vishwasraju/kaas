@@ -1,6 +1,6 @@
 """
 Test suite for data models.
-Tests: MDL-01 through MDL-05
+Tests: MDL-01 through MDL-06
 """
 
 import os
@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.document import Document
 from models.page import Page
 from models.paragraph import Paragraph
+from models.chunk import DoclingChunk
 from models.okf_file import OKFFile
 from models.repository import Repository
 
@@ -25,6 +26,7 @@ class TestDocument:
         assert doc.filepath == "/tmp/test.pdf"
         assert doc.page_count == 5
         assert doc.pages == []
+        assert doc.chunks == []
         assert doc.raw_text == ""
         assert doc.normalized_text == ""
         assert doc.metadata == {}
@@ -46,13 +48,33 @@ class TestPage:
 
 
 class TestParagraph:
-    """MDL-03: Paragraph stores index and text."""
+    """MDL-03: Paragraph stores index, text, and optional section_heading."""
 
     def test_mdl_03_paragraph_fields(self):
         """Paragraph stores index and text correctly."""
-        p = Paragraph(index=0, text="Test paragraph content")
+        p = Paragraph(index=0, text="Test paragraph content", section_heading="Header")
         assert p.index == 0
         assert p.text == "Test paragraph content"
+        assert p.section_heading == "Header"
+
+
+class TestDoclingChunk:
+    """MDL-06: DoclingChunk stores chunk metadata and content."""
+
+    def test_mdl_06_docling_chunk_fields(self):
+        chunk = DoclingChunk(
+            chunk_id=1,
+            heading="Section 1",
+            content="Some text",
+            chunk_type="text",
+            suggested_type="text",
+            page_start=1,
+            page_end=2,
+            paragraph_indices=[1, 2]
+        )
+        assert chunk.chunk_id == 1
+        assert chunk.heading == "Section 1"
+        assert chunk.content == "Some text"
 
 
 class TestOKFFile:

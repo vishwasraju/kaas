@@ -57,8 +57,10 @@ def _format_paragraph(text: str) -> str:
 def generate_repository(document: Document, analysis: dict) -> Repository:
     """
     Generate an in-memory OKF repository from the AI analysis.
-    Produces a spec-conformant bundle with directory hierarchy,
-    proper frontmatter, and markdown cross-links.
+
+    Uses chunk_ids from the AI analysis to look up DoclingChunk objects
+    on the document, assembling content from pre-formed structural chunks
+    rather than raw paragraph ranges.
     """
 
     repository = Repository(
@@ -72,40 +74,36 @@ def generate_repository(document: Document, analysis: dict) -> Repository:
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    # Build a lookup map from chunk_id to DoclingChunk
+    chunk_map = {chunk.chunk_id: chunk for chunk in document.chunks}
+
     # Track used paths to avoid collisions
     used_paths = set()
 
-    # First pass: create all OKFFile objects with paths
     for unit in knowledge_units:
 
         content_parts = []
-        citations = []
-        seen_urls = set()
+        page_start = None
+        page_end = None
 
-        for segment in unit["segments"]:
+        chunk_ids = unit.get("chunk_ids", [])
 
-            page_number = segment["page"]
-            start_paragraph = segment["start_paragraph"]
-            end_paragraph = segment["end_paragraph"]
-
-            # Guard against invalid page references
-            if page_number < 1 or page_number > len(document.pages):
+        for cid in chunk_ids:
+            chunk = chunk_map.get(cid)
+            if not chunk:
+                logger.warning(
+                    "Knowledge unit '%s' references unknown chunk_id %d, skipping",
+                    unit.get("title", "?"), cid
+                )
                 continue
 
-            page = document.pages[page_number - 1]
+            content_parts.append(chunk.content)
 
-            for paragraph in page.paragraphs:
-
-                if start_paragraph <= paragraph.index <= end_paragraph:
-                    content_parts.append(paragraph.text)
-
-            # Collect hyperlinks from source pages for citations (§8)
-            for link in page.links:
-                url = link.get("url", "")
-                if url and url not in seen_urls:
-                    seen_urls.add(url)
-                    text = link.get("text", "").strip() or url
-                    citations.append({"text": text, "url": url})
+            # Track page range across all chunks in this unit
+            if page_start is None or chunk.page_start < page_start:
+                page_start = chunk.page_start
+            if page_end is None or chunk.page_end > page_end:
+                page_end = chunk.page_end
 
         # Determine directory path from AI-provided category
         category = unit.get("category", "concepts")
@@ -122,12 +120,12 @@ def generate_repository(document: Document, analysis: dict) -> Repository:
 
         used_paths.add(path)
 
-        # Apply markdown formatting heuristics to paragraph content
+        # Apply markdown formatting heuristics to content
         formatted_content = "\n\n".join(_format_paragraph(p) for p in content_parts)
 
         if not formatted_content.strip():
             logger.warning(
-                "Skipping empty knowledge unit '%s' (no valid paragraph content found)",
+                "Skipping empty knowledge unit '%s' (no valid content found)",
                 unit["title"]
             )
             continue
@@ -143,11 +141,11 @@ def generate_repository(document: Document, analysis: dict) -> Repository:
             metadata={
                 "source": {
                     "document": document.filename,
-                    "pages": f"{unit.get('start_page', 'N/A')}-{unit.get('end_page', 'N/A')}",
+                    "pages": f"{page_start or 'N/A'}-{page_end or 'N/A'}",
                 },
             },
             relationships=unit.get("relationships", []),
-            citations=citations,
+            citations=[],
         )
 
         repository.files.append(okf_file)
