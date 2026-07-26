@@ -13,8 +13,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Disable OCR by default for lightweight memory profile
+# Disable OCR and heavy TableFormer by default for ultra-lightweight memory profile
 ENV ENABLE_OCR=false
+ENV ENABLE_TABLE_STRUCTURE=false
 
 # Pre-download Docling models during build (not at runtime)
 RUN python -c "from docling.document_converter import DocumentConverter; DocumentConverter()"

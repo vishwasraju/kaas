@@ -73,9 +73,11 @@ def read_pdf(pdf_path: str) -> Document:
 
     try:
         enable_ocr = os.getenv("ENABLE_OCR", "false").lower() == "true"
+        enable_table_structure = os.getenv("ENABLE_TABLE_STRUCTURE", "false").lower() == "true"
+
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = enable_ocr
-        pipeline_options.do_table_structure = True
+        pipeline_options.do_table_structure = enable_table_structure
 
         converter = DocumentConverter(
             format_options={
