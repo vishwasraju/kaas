@@ -11,26 +11,23 @@ from models.document import Document
 def document_to_dict(document: Document) -> dict:
     """
     Convert a Document into a JSON-friendly dictionary.
-    Sends paragraph-level data for precise segment mapping.
-    Includes supplementary table and link data per page.
+    Sends chunk-level data for semantic mapping.
     """
 
     return {
         "filename": document.filename,
         "page_count": document.page_count,
         "metadata": document.metadata,
-        "pages": [
+        "chunks": [
             {
-                "page_number": page.page_number,
-                "paragraphs": [
-                    {"index": p.index, "text": p.text}
-                    for p in page.paragraphs
-                ],
-                "tables": page.tables,
-                "links": page.links,
-                "has_images": page.has_images,
+                "chunk_id": chunk.chunk_id,
+                "heading": chunk.heading,
+                "chunk_type": chunk.chunk_type,
+                "suggested_type": chunk.suggested_type,
+                "content_preview": chunk.content[:500],
+                "page_range": f"{chunk.page_start}-{chunk.page_end}",
             }
-            for page in document.pages
+            for chunk in document.chunks
         ]
     }
 

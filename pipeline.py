@@ -2,10 +2,11 @@
 Central pipeline orchestrator for PDF-to-OKF extraction.
 
 Chains all processing stages:
-    1. Extract raw text from PDF (Docling)
-    2. Canonicalize text (Unicode, whitespace, line endings)
-    3. AI analyzes document structure (Gemini)
-    4. Generate OKF repository with directory hierarchy
+    1. Extract raw text + structural chunks from PDF (Docling)
+    2. Canonicalize text (ftfy, Unicode, whitespace, line endings)
+    3. AI enriches chunk metadata (Gemini — lightweight)
+    3b. Deduplicate overlapping chunk assignments
+    4. Generate OKF repository from chunk-based analysis
     5. Validate repository (§9 conformance + YAML round-trip)
     5b. Integrity check (paragraph coverage)
     6. Write ZIP archive with .md concept files + knowledge graph
@@ -23,6 +24,9 @@ from validator.validator import validate
 from writer.writer import write_zip
 from tester.repository_checker import check_repository
 
+from typing import Any, Callable, Tuple
+from models.repository import Repository
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +40,7 @@ class PipelineError(Exception):
         super().__init__(f"[{step}] {message}")
 
 
-def _timed(step_name: str, func, *args, **kwargs):
+def _timed(step_name: str, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """Execute a function with timing and error handling."""
     logger.info(f"{step_name}...")
     start = time.time()
@@ -53,7 +57,7 @@ def _timed(step_name: str, func, *args, **kwargs):
         raise PipelineError(step_name, str(e), cause=e) from e
 
 
-def process_pdf(pdf_path: str) -> tuple:
+def process_pdf(pdf_path: str) -> Tuple[str, Repository]:
     """
     Full extraction pipeline.
 
@@ -66,26 +70,26 @@ def process_pdf(pdf_path: str) -> tuple:
 
     total_start = time.time()
 
-    # Step 1: Extract raw text from PDF
-    document = _timed("Step 1: Reading PDF", read_pdf, pdf_path)
-    logger.info(f"  Loaded {document.page_count} pages")
+    # Step 1: Extract raw text + structural chunks from PDF (Docling)
+    document = _timed("Step 1: Reading PDF + Structural Chunking", read_pdf, pdf_path)
+    logger.info(f"  Loaded {document.page_count} pages, {len(document.chunks)} structural chunks")
 
-    # Step 2: Canonicalize text
+    # Step 2: Canonicalize text (pages, paragraphs, and chunks)
     document = _timed("Step 2: Canonicalizing text", canonicalize, document)
 
-    # Step 3: AI analyzes document structure
+    # Step 3: AI enriches chunk metadata (lightweight — previews only)
     analysis = _timed(
-        "Step 3: Analyzing document with Gemini AI",
+        "Step 3: Enriching metadata with Gemini AI",
         analyze_document, document
     )
 
-    # Step 3b: Deduplicate overlapping paragraph assignments
+    # Step 3b: Deduplicate overlapping chunk assignments
     analysis = _timed(
-        "Step 3b: Deduplicating overlapping segments",
+        "Step 3b: Deduplicating overlapping chunk assignments",
         deduplicate_analysis, analysis
     )
 
-    # Step 4: Generate OKF repository
+    # Step 4: Generate OKF repository from chunk-based analysis
     repository = _timed(
         "Step 4: Generating OKF repository",
         generate_repository, document, analysis

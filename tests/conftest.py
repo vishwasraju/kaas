@@ -1,9 +1,9 @@
 """
 Shared pytest fixtures for the PDF-to-OKF test suite.
 
-Provides reusable fixtures for Document, Page, Paragraph, Repository,
-OKFFile models, mock Gemini responses, sample PDFs, and the FastAPI
-test client.
+Provides reusable fixtures for Document, Page, Paragraph, DoclingChunk,
+Repository, OKFFile models, mock Gemini responses, sample PDFs, and the
+FastAPI test client.
 """
 
 import json
@@ -21,6 +21,7 @@ if PROJECT_ROOT not in sys.path:
 from models.document import Document
 from models.page import Page
 from models.paragraph import Paragraph
+from models.chunk import DoclingChunk
 from models.okf_file import OKFFile
 from models.repository import Repository
 
@@ -54,6 +55,33 @@ def sample_paragraphs():
 
 
 @pytest.fixture
+def sample_chunks():
+    """Two sample DoclingChunks corresponding to the sample analysis."""
+    return [
+        DoclingChunk(
+            chunk_id=1,
+            heading="Introduction to Testing",
+            content="Software testing is the process of evaluating a system.\n\nIt involves executing components to find defects.",
+            chunk_type="text",
+            suggested_type="Introduction",
+            page_start=1,
+            page_end=1,
+            paragraph_indices=[0, 1],
+        ),
+        DoclingChunk(
+            chunk_id=2,
+            heading="Unit Testing Basics",
+            content="Unit testing validates individual functions in isolation.\n\nIntegration testing checks module interactions.",
+            chunk_type="text",
+            suggested_type="Section",
+            page_start=1,
+            page_end=1,
+            paragraph_indices=[2, 3],
+        ),
+    ]
+
+
+@pytest.fixture
 def sample_page(sample_paragraphs):
     """A single Page with paragraphs, a table, and a link."""
     return Page(
@@ -81,14 +109,15 @@ def sample_page(sample_paragraphs):
 
 
 @pytest.fixture
-def sample_document(sample_page):
-    """A Document with one page containing four paragraphs."""
+def sample_document(sample_page, sample_chunks):
+    """A Document with one page containing four paragraphs and two structural chunks."""
     return Document(
         filename="test_document.pdf",
         filepath="/tmp/test_document.pdf",
         page_count=1,
         metadata={"title": "Test Document"},
         pages=[sample_page],
+        chunks=sample_chunks,
         raw_text=sample_page.raw_text,
         normalized_text=sample_page.normalized_text,
     )
@@ -110,7 +139,7 @@ def sample_okf_file():
         title="Introduction to Testing",
         type="Chapter",
         description="An introduction to software testing concepts.",
-        content="Software testing is the process of evaluating a system.\nIt involves executing components to find defects.",
+        content="Software testing is the process of evaluating a system.\n\nIt involves executing components to find defects.",
         tags=["testing", "introduction"],
         timestamp="2026-07-18T00:00:00Z",
         metadata={},
@@ -127,7 +156,7 @@ def sample_okf_file_2():
         title="Unit Testing Basics",
         type="Chapter",
         description="Fundamentals of unit testing methodology.",
-        content="Unit testing validates individual functions in isolation.\nIntegration testing checks module interactions.",
+        content="Unit testing validates individual functions in isolation.\n\nIntegration testing checks module interactions.",
         tags=["testing", "unit-testing"],
         timestamp="2026-07-18T00:00:00Z",
         metadata={},
@@ -146,7 +175,7 @@ def sample_repository(sample_okf_file, sample_okf_file_2):
 
 
 # ---------------------------------------------------------------------------
-# PDF fixture (uses reportlab for lightweight PDF creation, no PyMuPDF)
+# PDF fixture (uses raw PDF commands for lightweight PDF creation)
 # ---------------------------------------------------------------------------
 
 def _create_simple_pdf(path, text=""):

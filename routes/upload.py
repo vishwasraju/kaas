@@ -47,10 +47,8 @@ def _validate_file(pdf: UploadFile) -> None:
             status_code=400,
             detail="Invalid content type. Only PDF files are accepted."
         )
-
-
 @router.post("/upload")
-def upload_pdf(pdf: UploadFile = File(...)):
+async def upload_pdf(pdf: UploadFile = File(...)) -> dict:
     """
     Upload a PDF and convert to OKF bundle.
     """
@@ -64,14 +62,15 @@ def upload_pdf(pdf: UploadFile = File(...)):
     safe_name = _sanitize_filename(pdf.filename or "upload.pdf")
     file_path = os.path.join(temp_dir, safe_name)
 
-    # Write with size limit check
+    # Write with size limit check using async file read
     bytes_written = 0
     with open(file_path, "wb") as buffer:
-        while chunk := pdf.file.read(8192):
+        while chunk := await pdf.read(8192):
             bytes_written += len(chunk)
             if bytes_written > MAX_UPLOAD_SIZE_BYTES:
                 buffer.close()
-                os.remove(file_path)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
                 raise HTTPException(
                     status_code=413,
                     detail=f"File too large. Maximum size is {MAX_UPLOAD_SIZE_MB}MB."
@@ -113,7 +112,7 @@ def upload_pdf(pdf: UploadFile = File(...)):
         raise
 
     except Exception as e:
-        logger.error("Extraction failed for %s: %s", safe_name, e)
+        logger.error("Extraction failed for %s: %s", safe_name, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
     finally:

@@ -70,41 +70,22 @@ def _validate_schema(data: dict) -> None:
     for i, unit in enumerate(units):
         if "title" not in unit:
             raise ValueError(f"Knowledge unit {i} missing 'title'")
-        if "segments" not in unit:
-            raise ValueError(f"Knowledge unit {i} missing 'segments'")
+        if "chunk_ids" not in unit:
+            raise ValueError(f"Knowledge unit {i} missing 'chunk_ids'")
 
-        # Validate each segment has the required fields
-        for j, segment in enumerate(unit["segments"]):
-            if not isinstance(segment, dict):
+        # Validate chunk_ids
+        chunk_ids = unit["chunk_ids"]
+        if not isinstance(chunk_ids, list):
+            raise ValueError(
+                f"Knowledge unit {i} ('{unit['title']}'): "
+                f"'chunk_ids' must be a list, got {type(chunk_ids).__name__}"
+            )
+        
+        for j, cid in enumerate(chunk_ids):
+            if not isinstance(cid, int) or cid <= 0:
                 raise ValueError(
                     f"Knowledge unit {i} ('{unit['title']}'), "
-                    f"segment {j}: expected a dict, got {type(segment).__name__}"
-                )
-            for field in ("page", "start_paragraph", "end_paragraph"):
-                if field not in segment:
-                    raise ValueError(
-                        f"Knowledge unit {i} ('{unit['title']}'), "
-                        f"segment {j}: missing required field '{field}'"
-                    )
-                if not isinstance(segment[field], int):
-                    raise ValueError(
-                        f"Knowledge unit {i} ('{unit['title']}'), "
-                        f"segment {j}: '{field}' must be an integer, "
-                        f"got {type(segment[field]).__name__}"
-                    )
-
-        # Validate page range fields (used by generator for metadata)
-        for field in ("start_page", "end_page"):
-            if field not in unit:
-                raise ValueError(
-                    f"Knowledge unit {i} ('{unit['title']}') "
-                    f"missing required field '{field}'"
-                )
-            if not isinstance(unit[field], int):
-                raise ValueError(
-                    f"Knowledge unit {i} ('{unit['title']}'): "
-                    f"'{field}' must be an integer, "
-                    f"got {type(unit[field]).__name__}"
+                    f"chunk_id at index {j} must be a positive integer, got {cid}"
                 )
 
         # Validate metadata enrichment fields exist

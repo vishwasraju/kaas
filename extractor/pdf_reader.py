@@ -1,22 +1,65 @@
 import logging
 import os
+import re
 from typing import Dict, List
 
 from models.document import Document
 from models.page import Page
 from models.paragraph import Paragraph
+from models.chunk import DoclingChunk
 
 logger = logging.getLogger(__name__)
+
+
+def _classify_type(heading: str, chunk_type: str) -> str:
+    """
+    Rule-based type classification from heading text and chunk type.
+    Handles ~80% of type assignments deterministically; Gemini can override.
+    """
+    if chunk_type == "table":
+        return "Reference"
+    if chunk_type == "figure":
+        return "Figure"
+
+    heading_lower = heading.lower().strip()
+    if re.match(r'^(chapter|part)\s+\d', heading_lower):
+        return "Chapter"
+    if re.match(r'^appendix', heading_lower):
+        return "Appendix"
+    if re.match(r'^glossary', heading_lower):
+        return "Glossary"
+    if re.match(r'^(references|bibliography)', heading_lower):
+        return "Reference"
+    if re.match(r'^(exercise|problem|question)', heading_lower):
+        return "Exercise"
+    if re.match(r'^(example|case study)', heading_lower):
+        return "Example"
+    if re.match(r'^(theorem|lemma|corollary)', heading_lower):
+        return "Theorem"
+    if re.match(r'^definition', heading_lower):
+        return "Definition"
+    if re.match(r'^(summary|conclusion)', heading_lower):
+        return "Summary"
+    if re.match(r'^(introduction|preface|foreword)', heading_lower):
+        return "Introduction"
+
+    return "Section"
+
 
 def read_pdf(pdf_path: str) -> Document:
     """
     Reads a PDF using Docling and creates a Document object.
 
+    Performs two extraction passes:
+    1. Flat paragraph extraction (per-page, for integrity checking)
+    2. Structural chunking (section-level, for OKF generation)
+
     Extracts:
     - Raw page text (Markdown)
-    - Paragraphs
-    - Tables
-    - Image presence
+    - Paragraphs (indexed per page)
+    - Tables (preserved as complete Markdown)
+    - Image presence flags
+    - Structural Chunks (DoclingChunk objects)
     """
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
@@ -38,7 +81,7 @@ def read_pdf(pdf_path: str) -> Document:
 
     num_pages = len(docling_doc.pages)
 
-    # Initialize collections
+    # Initialize per-page collections (Pass 1: flat paragraphs)
     page_texts: Dict[int, List[str]] = {i: [] for i in range(1, num_pages + 1)}
     page_paragraphs: Dict[int, List[Paragraph]] = {i: [] for i in range(1, num_pages + 1)}
     page_tables: Dict[int, List[Dict]] = {i: [] for i in range(1, num_pages + 1)}
@@ -46,7 +89,39 @@ def read_pdf(pdf_path: str) -> Document:
 
     paragraph_counters = {i: 1 for i in range(1, num_pages + 1)}
 
-    # Iterate over document elements
+    # Pass 2: Structural chunking state
+    chunks: List[DoclingChunk] = []
+    chunk_id_counter = 1
+
+    current_heading = ""
+    current_text_parts: List[str] = []
+    current_page_start = None
+    current_page_end = None
+    current_paragraph_indices: List[int] = []
+
+    def _close_text_chunk():
+        """Close the current accumulating text chunk and save it."""
+        nonlocal chunk_id_counter, current_text_parts, current_page_start, current_page_end, current_paragraph_indices
+        if current_text_parts:
+            content = "\n\n".join(current_text_parts)
+            chunk = DoclingChunk(
+                chunk_id=chunk_id_counter,
+                heading=current_heading,
+                content=content,
+                chunk_type="text",
+                suggested_type=_classify_type(current_heading, "text"),
+                page_start=current_page_start or 1,
+                page_end=current_page_end or 1,
+                paragraph_indices=current_paragraph_indices.copy()
+            )
+            chunks.append(chunk)
+            chunk_id_counter += 1
+            current_text_parts = []
+            current_page_start = None
+            current_page_end = None
+            current_paragraph_indices = []
+
+    # Iterate over document elements (both passes happen in single traversal)
     for item, level in docling_doc.iterate_items():
         if hasattr(item, 'prov') and item.prov:
             for prov in item.prov:
@@ -56,7 +131,21 @@ def read_pdf(pdf_path: str) -> Document:
 
                 item_type = type(item).__name__
 
+                # Detect section headers to create chunk boundaries
+                is_header = (
+                    item_type == "SectionHeaderItem"
+                    or "Header" in item_type
+                    or "Title" in item_type
+                )
+
+                if is_header:
+                    _close_text_chunk()
+                    current_heading = item.text if hasattr(item, 'text') and item.text else ""
+
                 if item_type == "TableItem":
+                    # Close any preceding text chunk before the standalone table
+                    _close_text_chunk()
+
                     md_table = item.export_to_markdown() if hasattr(item, 'export_to_markdown') else ""
                     # Store as markdown representation for tables
                     page_tables[page_no].append({
@@ -65,29 +154,92 @@ def read_pdf(pdf_path: str) -> Document:
                         "md": md_table
                     })
                     if md_table:
+                        p_idx = paragraph_counters[page_no]
                         page_paragraphs[page_no].append(
-                            Paragraph(index=paragraph_counters[page_no], text=md_table)
+                            Paragraph(index=p_idx, text=md_table, section_heading=current_heading)
                         )
                         paragraph_counters[page_no] += 1
                         page_texts[page_no].append(md_table)
+
+                        # Table = standalone chunk (never split)
+                        chunks.append(DoclingChunk(
+                            chunk_id=chunk_id_counter,
+                            heading=current_heading,
+                            content=md_table,
+                            chunk_type="table",
+                            suggested_type=_classify_type(current_heading, "table"),
+                            page_start=page_no,
+                            page_end=page_no,
+                            paragraph_indices=[p_idx]
+                        ))
+                        chunk_id_counter += 1
+
                 elif item_type == "PictureItem":
                     page_images[page_no] = True
+                    # Figure = standalone chunk
+                    chunks.append(DoclingChunk(
+                        chunk_id=chunk_id_counter,
+                        heading=current_heading,
+                        content="[Figure]",
+                        chunk_type="figure",
+                        suggested_type=_classify_type(current_heading, "figure"),
+                        page_start=page_no,
+                        page_end=page_no,
+                        paragraph_indices=[]
+                    ))
+                    chunk_id_counter += 1
+
                 elif hasattr(item, 'text'):
-                    # Text item (Paragraph, Title, Section header, etc.)
+                    # Text item (Paragraph, Section header text, etc.)
                     text_val = item.text
                     if text_val:
+                        p_idx = paragraph_counters[page_no]
                         page_texts[page_no].append(text_val)
                         page_paragraphs[page_no].append(
-                            Paragraph(index=paragraph_counters[page_no], text=text_val)
+                            Paragraph(index=p_idx, text=text_val, section_heading=current_heading)
                         )
                         paragraph_counters[page_no] += 1
 
+                        # Accumulate into current section chunk
+                        current_text_parts.append(text_val)
+                        current_paragraph_indices.append(p_idx)
+                        if current_page_start is None or page_no < current_page_start:
+                            current_page_start = page_no
+                        if current_page_end is None or page_no > current_page_end:
+                            current_page_end = page_no
+
+    # Close the last text chunk
+    _close_text_chunk()
+
+    # FALLBACK: If zero chunks were created (PDF has no section headers),
+    # create 1 chunk per page to avoid returning 1 giant chunk.
+    if len(chunks) == 0:
+        logger.info("No section headers found in PDF. Falling back to page-based chunking.")
+        for p_num in range(1, num_pages + 1):
+            page_text_content = "\n\n".join(page_texts.get(p_num, []))
+            if page_text_content.strip():
+                indices = [p.index for p in page_paragraphs.get(p_num, [])]
+                chunks.append(DoclingChunk(
+                    chunk_id=chunk_id_counter,
+                    heading=f"Page {p_num}",
+                    content=page_text_content,
+                    chunk_type="text",
+                    suggested_type="Section",
+                    page_start=p_num,
+                    page_end=p_num,
+                    paragraph_indices=indices
+                ))
+                chunk_id_counter += 1
+
+    # Build the Document object
     document = Document(
         filename=os.path.basename(pdf_path),
         filepath=os.path.abspath(pdf_path),
         page_count=num_pages,
         metadata={},
     )
+
+    document.chunks = chunks
 
     for p_num in range(1, num_pages + 1):
         raw_text = "\n".join(page_texts.get(p_num, []))

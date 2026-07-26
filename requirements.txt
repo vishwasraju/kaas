@@ -11,5 +11,8 @@ docling>=2.70.0
 google-genai>=1.0.0
 python-dotenv>=1.0.0
 
+# Text canonicalization
+ftfy>=6.1
+
 # YAML
 PyYAML>=6.0

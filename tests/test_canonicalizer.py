@@ -1,6 +1,6 @@
 """
 Test suite for the canonicalizer module.
-Tests: CAN-01 through CAN-11
+Tests: CAN-01 through CAN-12
 """
 
 import os
@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.document import Document
 from models.page import Page
 from models.paragraph import Paragraph
+from models.chunk import DoclingChunk
 from canonicalizer.pipeline import canonicalize, _canonicalize_text
 from canonicalizer.unicode import normalize_unicode
 from canonicalizer.whitespace import normalize_whitespace
@@ -22,7 +23,7 @@ from canonicalizer.validator import validate
 
 
 def _make_document(raw_text, paragraphs=None):
-    """Helper to create a Document with one page."""
+    """Helper to create a Document with one page and one chunk."""
     if paragraphs is None:
         paragraphs = [Paragraph(index=0, text=raw_text)]
     page = Page(
@@ -30,11 +31,22 @@ def _make_document(raw_text, paragraphs=None):
         raw_text=raw_text,
         paragraphs=paragraphs,
     )
+    chunk = DoclingChunk(
+        chunk_id=0,
+        heading=raw_text,
+        content=raw_text,
+        chunk_type="text",
+        suggested_type="text",
+        page_start=1,
+        page_end=1,
+        paragraph_indices=[0]
+    )
     return Document(
         filename="test.pdf",
         filepath="/tmp/test.pdf",
         page_count=1,
         pages=[page],
+        chunks=[chunk],
         raw_text=raw_text,
     )
 
@@ -59,6 +71,20 @@ class TestCanonicalizationPipeline:
         result = canonicalize(sample_document)
         expected = "\n".join(page.normalized_text for page in result.pages)
         assert result.normalized_text == expected
+
+    def test_can_12_chunks_canonicalized(self):
+        """CAN-12: Canonicalization applies to chunk content and headings."""
+        doc = _make_document("Hello\tworld\r\n")
+        result = canonicalize(doc)
+        chunk = result.chunks[0]
+        # Should be converted by pipeline:
+        # Unicode not affected here, tabs -> spaces, crlf -> lf
+        assert "\t" not in chunk.content
+        assert "\r\n" not in chunk.content
+        assert "Hello world" in chunk.content
+        assert "\t" not in chunk.heading
+        assert "\r\n" not in chunk.heading
+        assert "Hello world" in chunk.heading
 
 
 class TestUnicodeNormalization:
@@ -104,7 +130,7 @@ class TestLineEndingNormalization:
     """Tests for line ending normalization."""
 
     def test_can_08_crlf_to_lf(self):
-        """CAN-08: \\r\\n normalized to \\n."""
+        """CAN-08: \r\n normalized to \n."""
         doc = _make_document("Hello\r\nworld\r\n")
         doc = normalize_unicode(doc)
         doc = normalize_whitespace(doc)
@@ -113,7 +139,7 @@ class TestLineEndingNormalization:
         assert "\n" in result.pages[0].normalized_text
 
     def test_can_09_cr_to_lf(self):
-        """CAN-09: \\r normalized to \\n."""
+        """CAN-09: \r normalized to \n."""
         doc = _make_document("Hello\rworld\r")
         doc = normalize_unicode(doc)
         doc = normalize_whitespace(doc)
@@ -137,6 +163,7 @@ class TestCanonicalizerValidator:
             filepath="/tmp/test.pdf",
             page_count=1,
             pages=[page],
+            chunks=[]
         )
         with pytest.raises(ValueError, match="normalized_text is empty"):
             validate(doc)
@@ -154,6 +181,7 @@ class TestCanonicalizerValidator:
             filepath="/tmp/test.pdf",
             page_count=1,
             pages=[page],
+            chunks=[]
         )
         # Should not raise
         validate(doc)

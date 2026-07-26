@@ -44,7 +44,7 @@ class TestPipeline:
     """Tests for pipeline.py."""
 
     @patch("pipeline.write_zip", return_value="/tmp/output.zip")
-    @patch("pipeline.check_repository", return_value={"missing": 0, "duplicates": 0, "original": 4, "generated": 4})
+    @patch("pipeline.check_repository", return_value={"missing": 0, "duplicates": 0, "original": 4, "generated": 4, "total_chunks": 4})
     @patch("pipeline.validate", return_value=True)
     @patch("pipeline.generate_repository")
     @patch("pipeline.deduplicate_analysis", side_effect=lambda x: x)
@@ -91,7 +91,7 @@ class TestPipeline:
         assert "Gemini" in str(exc_info.value) or "Step 3" in str(exc_info.value)
 
     @patch("pipeline.write_zip", return_value="/tmp/output.zip")
-    @patch("pipeline.check_repository", return_value={"missing": 0, "duplicates": 0, "original": 4, "generated": 4})
+    @patch("pipeline.check_repository", return_value={"missing": 0, "duplicates": 0, "original": 4, "generated": 4, "total_chunks": 4})
     @patch("pipeline.validate", side_effect=Exception("Validation failed"))
     @patch("pipeline.generate_repository")
     @patch("pipeline.deduplicate_analysis", side_effect=lambda x: x)
@@ -122,7 +122,7 @@ class TestPipeline:
         assert any("completed" in r.message.lower() for r in caplog.records)
 
     @patch("pipeline.write_zip", return_value="/tmp/output.zip")
-    @patch("pipeline.check_repository", return_value={"missing": 3, "duplicates": 1, "original": 10, "generated": 8})
+    @patch("pipeline.check_repository", return_value={"missing": 3, "duplicates": 1, "original": 10, "generated": 8, "total_chunks": 10})
     @patch("pipeline.validate", return_value=True)
     @patch("pipeline.generate_repository")
     @patch("pipeline.deduplicate_analysis", side_effect=lambda x: x)
@@ -150,7 +150,7 @@ class TestPipeline:
         assert any("missing" in r.message.lower() or "Integrity" in r.message for r in caplog.records)
 
     @patch("pipeline.write_zip", return_value="/tmp/output.zip")
-    @patch("pipeline.check_repository", return_value={"missing": 0, "duplicates": 0, "original": 4, "generated": 4})
+    @patch("pipeline.check_repository", return_value={"missing": 0, "duplicates": 0, "original": 4, "generated": 4, "total_chunks": 4})
     @patch("pipeline.validate", return_value=True)
     @patch("pipeline.generate_repository")
     @patch("pipeline.deduplicate_analysis", side_effect=lambda x: x)
