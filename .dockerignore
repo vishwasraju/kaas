@@ -11,6 +11,4 @@ tests/
 *.md
 !README.md
 .editorconfig
-vercel.json
-api/
 .agents/
