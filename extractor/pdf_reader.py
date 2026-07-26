@@ -65,12 +65,23 @@ def read_pdf(pdf_path: str) -> Document:
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
     try:
-        from docling.document_converter import DocumentConverter
+        from docling.document_converter import DocumentConverter, PdfFormatOption
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        from docling.datamodel.base_models import InputFormat
     except ImportError as e:
         raise RuntimeError("Docling package is not installed. Please install 'docling'.") from e
 
     try:
-        converter = DocumentConverter()
+        enable_ocr = os.getenv("ENABLE_OCR", "false").lower() == "true"
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = enable_ocr
+        pipeline_options.do_table_structure = True
+
+        converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+            }
+        )
         result = converter.convert(pdf_path)
         docling_doc = result.document
     except Exception as e:
