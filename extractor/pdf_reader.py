@@ -72,8 +72,8 @@ def read_pdf(pdf_path: str) -> Document:
         raise RuntimeError("Docling package is not installed. Please install 'docling'.") from e
 
     try:
-        enable_ocr = os.getenv("ENABLE_OCR", "false").lower() == "true"
-        enable_table_structure = os.getenv("ENABLE_TABLE_STRUCTURE", "false").lower() == "true"
+        enable_ocr = os.getenv("ENABLE_OCR", "true").lower() == "true"
+        enable_table_structure = os.getenv("ENABLE_TABLE_STRUCTURE", "true").lower() == "true"
 
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = enable_ocr
