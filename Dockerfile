@@ -29,12 +29,12 @@ RUN python -c "from docling.document_converter import DocumentConverter; Documen
 # Copy application code
 COPY --chown=user . .
 
-# Expose Hugging Face Spaces default port
-EXPOSE 7860
+# Expose default port
+EXPOSE 8080
 
-# Health check on port 7860
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
 
-# Run with uvicorn on port 7860
-CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-7860}"]
+# Run with uvicorn listening on dynamic $PORT
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080}"]
