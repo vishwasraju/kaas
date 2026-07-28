@@ -14,7 +14,7 @@ USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH \
     PORT=7860 \
-    ENABLE_OCR=true \
+    ENABLE_OCR=false \
     ENABLE_TABLE_STRUCTURE=true
 
 WORKDIR $HOME/app
@@ -24,7 +24,7 @@ COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Pre-download Docling models during build (not at runtime)
-RUN python -c "from docling.document_converter import DocumentConverter; DocumentConverter()"
+RUN python -c "from docling.document_converter import DocumentConverter; DocumentConverter(); from rapidocr import RapidOCR; RapidOCR()"
 
 # Copy application code
 COPY --chown=user . .

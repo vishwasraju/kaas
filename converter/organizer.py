@@ -187,16 +187,27 @@ def analyze_document(document: Document) -> dict:
 
     logger.info(f"Split document into {len(chunks_indices)} processing chunks: {chunks_indices}")
 
-    chunk_analyses = []
-    for idx, (s, e) in enumerate(chunks_indices, start=1):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _process_slice(item):
+        idx, (s, e) = item
         logger.info(f"Processing chunk {idx}/{len(chunks_indices)} (chunks {s} to {e-1})...")
         slice_doc = _slice_document(document, s, e)
-        chunk_res = _analyze_single_doc(slice_doc)
-        chunk_analyses.append(chunk_res)
+        return idx, _analyze_single_doc(slice_doc)
 
-        if idx < len(chunks_indices) and delay > 0:
-            logger.info(f"Waiting {delay:.1f}s between API calls for rate-limit protection...")
-            time.sleep(delay)
+    indexed_items = list(enumerate(chunks_indices, start=1))
+    chunk_analyses_map = {}
+
+    max_workers = min(len(chunks_indices), 4)
+    logger.info(f"Analyzing {len(chunks_indices)} chunks in parallel with {max_workers} workers...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_process_slice, item): item[0] for item in indexed_items}
+        for future in as_completed(futures):
+            idx, res = future.result()
+            chunk_analyses_map[idx] = res
+
+    chunk_analyses = [chunk_analyses_map[i] for i in range(1, len(chunks_indices) + 1)]
 
     merged_analysis = _merge_chunk_analyses(chunk_analyses)
     logger.info(
