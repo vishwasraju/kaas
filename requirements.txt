@@ -16,3 +16,6 @@ ftfy>=6.1
 
 # YAML
 PyYAML>=6.0
+
+# Cloud Storage
+google-cloud-storage>=2.10.0
