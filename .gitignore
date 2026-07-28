@@ -25,3 +25,8 @@ tmp/
 # IDE
 .vscode/
 .idea/
+
+# Test artifacts
+.coverage
+.pytest_cache/
+htmlcov/

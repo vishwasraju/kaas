@@ -24,7 +24,6 @@ def check_repository(document: Document, repository: Repository) -> Dict:
     # ── Chunk-level integrity check ──
 
     total_chunks = len(document.chunks)
-    all_chunk_ids = {chunk.chunk_id for chunk in document.chunks}
 
     # Collect chunk_ids referenced by repository files
     # We need to get this from the analysis, but since we only have
