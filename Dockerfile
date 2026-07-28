@@ -24,7 +24,7 @@ COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Pre-download Docling models during build (not at runtime)
-RUN python -c "from docling.document_converter import DocumentConverter; DocumentConverter(); from rapidocr import RapidOCR; RapidOCR()"
+RUN python -c "from docling.document_converter import DocumentConverter; DocumentConverter()"
 
 # Copy application code
 COPY --chown=user . .
