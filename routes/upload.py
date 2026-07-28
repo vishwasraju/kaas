@@ -81,6 +81,8 @@ async def upload_pdf(pdf: UploadFile = File(...)) -> dict:
     try:
         # Run extraction pipeline
         logger.info("Processing PDF: %s", safe_name)
+        zip_path, repository = process_pdf(file_path)
+
         # Optional: Upload zip output to Google Cloud Storage bucket
         from writer.gcs_uploader import upload_to_gcs
         blob_name = f"outputs/{safe_name}_okf.zip"
